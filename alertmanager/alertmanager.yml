@@ -1,0 +1,76 @@
+global:
+  resolve_timeout: 5m
+  slack_api_url: 'https://discord.com/api/webhooks/1438612810258186280/wLxcZH-bW8f4VnzBNiEpw34fUqShyTHvC4aQmynu_GCe81xtbG6zlZgDVctPoaF9ISEm/slack'
+
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'discord-critical'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'discord-critical'
+      continue: true
+
+    - match:
+        severity: warning
+      receiver: 'discord-warnings'
+      continue: true
+
+    - match_re:
+        service: postgres|mysql
+      receiver: 'discord-database'
+
+receivers:
+  - name: 'discord-critical'
+    slack_configs:
+      - channel: 'alertas-criticas'
+        title: ':fire: ALERTA CRÍTICA'
+        text: |
+          *Proyecto:* {{ .GroupLabels.project }}
+          *Servicio:* {{ .GroupLabels.service }}
+          *Alerta:* {{ .GroupLabels.alertname }}
+
+          {{ range .Alerts }}
+          *Descripción:* {{ .Annotations.description }}
+          *Severidad:* {{ .Labels.severity }}
+          {{ end }}
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+
+  - name: 'discord-warnings'
+    slack_configs:
+      - channel: 'alertas-warnings'
+        title: ':warning: Alerta de Advertencia'
+        text: |
+          *Proyecto:* {{ .GroupLabels.project }}
+          *Servicio:* {{ .GroupLabels.service }}
+          *Alerta:* {{ .GroupLabels.alertname }}
+
+          {{ range .Alerts }}
+          *Descripción:* {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+        color: 'warning'
+
+  - name: 'discord-database'
+    slack_configs:
+      - channel: 'alertas-database'
+        title: ':database: Alerta de Base de Datos'
+        text: |
+          *Servicio:* {{ .GroupLabels.service }}
+          *Alerta:* {{ .GroupLabels.alertname }}
+
+          {{ range .Alerts }}
+          {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']

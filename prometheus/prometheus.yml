@@ -1,0 +1,63 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'iieg'
+    environment: 'production'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          service: 'grafana'
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+        labels:
+          service: 'loki'
+
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+        labels:
+          service: 'tempo'
+
+  - job_name: 'urlschiquitas-backend'
+    static_configs:
+      - targets: ['host.docker.internal:9090']
+        labels:
+          project: 'urlschiquitas'
+          service: 'backend'
+          environment: 'production'
+
+  - job_name: 'urlschiquitas-postgres'
+    static_configs:
+      - targets: ['host.docker.internal:9187']
+        labels:
+          project: 'urlschiquitas'
+          service: 'postgres'
+          environment: 'production'
+
+  - job_name: 'mapalab-backend'
+    static_configs:
+      - targets: ['192.168.1.x:3001']
+        labels:
+          project: 'mapalab'
+          service: 'backend'
+          environment: 'production'

@@ -7,6 +7,8 @@ if [ ! -f .env ]; then
 	exit 1
 fi
 
+source .env
+
 echo "Starting monitoring stack..."
 docker compose up -d
 
@@ -14,10 +16,10 @@ echo "Waiting for services to start..."
 sleep 10
 
 echo "Services started:"
-echo "  Grafana: http://localhost:9000"
-echo "  Prometheus: http://localhost:9001"
-echo "  AlertManager: http://localhost:9002"
-echo "  Loki: http://localhost:9003"
-echo "  Tempo: http://localhost:9004"
-echo "  Node Exporter: http://localhost:9010"
-echo "  cAdvisor: http://localhost:9011"
+echo "  Grafana: http://localhost:${GRAFANA_PORT}"
+echo "  Prometheus: http://localhost:${PROMETHEUS_PORT}"
+echo "  AlertManager: http://localhost:${ALERTMANAGER_PORT}"
+echo "  Loki: http://localhost:${LOKI_PORT}"
+echo "  Tempo: http://localhost:${TEMPO_PORT}"
+echo "  Node Exporter: http://localhost:${NODE_EXPORTER_PORT}"
+echo "  cAdvisor: http://localhost:${CADVISOR_PORT}"

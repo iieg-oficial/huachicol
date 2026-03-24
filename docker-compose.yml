@@ -15,11 +15,13 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus/rules:/etc/prometheus/rules
+      - ./prometheus/targets:/etc/prometheus/targets
       - prometheus_data:/prometheus
     ports:
       - "${PROMETHEUS_PORT}:9090"
     networks:
       - monitoring
+      - iieg-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -73,6 +75,7 @@ services:
       - "${LOKI_PORT}:3100"
     networks:
       - monitoring
+      - iieg-network
 
   tempo:
     image: grafana/tempo:latest
@@ -164,6 +167,8 @@ services:
 networks:
   monitoring:
     driver: bridge
+  iieg-network:
+    external: true
 
 volumes:
   prometheus_data:

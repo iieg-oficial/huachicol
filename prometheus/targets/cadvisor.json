@@ -1,0 +1,32 @@
+[
+  {
+    "targets": ["cadvisor:8080"],
+    "labels": {
+      "server": "monitoring"
+    }
+  },
+  {
+    "targets": ["PORTAL_SERVER_IP:8080"],
+    "labels": {
+      "server": "portal"
+    }
+  },
+  {
+    "targets": ["MAPALAB_SERVER_IP:8080"],
+    "labels": {
+      "server": "mapalab"
+    }
+  },
+  {
+    "targets": ["MARIACHI_SERVER_IP:8080"],
+    "labels": {
+      "server": "mariachi"
+    }
+  },
+  {
+    "targets": ["GEOSERVER_SERVER_IP:8080"],
+    "labels": {
+      "server": "geoserver"
+    }
+  }
+]

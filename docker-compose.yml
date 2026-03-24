@@ -34,6 +34,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: ${GRAFANA_ALLOW_SIGN_UP}
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS}
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -43,6 +44,7 @@ services:
       - "${GRAFANA_PORT}:3000"
     networks:
       - monitoring
+      - iieg-network
     depends_on:
       - prometheus
 

@@ -16,13 +16,6 @@ distributor:
         grpc:
     opencensus:
 
-ingester:
-  max_block_duration: 5m
-
-compactor:
-  compaction:
-    block_retention: 168h
-
 storage:
   trace:
     backend: local
@@ -30,6 +23,9 @@ storage:
       path: /var/tempo/traces
     wal:
       path: /var/tempo/wal
+    block:
+      max_block_duration: 5m
+      block_retention: 168h
     pool:
       max_workers: 100
       queue_depth: 10000

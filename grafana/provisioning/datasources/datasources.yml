@@ -37,9 +37,3 @@ datasources:
         datasourceUid: 'prometheus'
       nodeGraph:
         enabled: true
-
-  - name: Matomo
-    type: grafana-piechart-panel
-    access: proxy
-    url: http://matomo:80
-    editable: true

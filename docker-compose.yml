@@ -94,40 +94,6 @@ services:
     networks:
       - monitoring
 
-  matomo-db:
-    image: mariadb:11
-    container_name: matomo-db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MATOMO_DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MATOMO_DB_NAME}
-      MYSQL_USER: ${MATOMO_DB_USER}
-      MYSQL_PASSWORD: ${MATOMO_DB_PASSWORD}
-    volumes:
-      - matomo_db:/var/lib/mysql
-    networks:
-      - monitoring
-
-  matomo:
-    image: matomo:latest
-    container_name: matomo
-    restart: unless-stopped
-    environment:
-      MATOMO_DATABASE_HOST: ${MATOMO_DB_HOST}
-      MATOMO_DATABASE_ADAPTER: ${MATOMO_DB_ADAPTER}
-      MATOMO_DATABASE_TABLES_PREFIX: ${MATOMO_DB_PREFIX}
-      MATOMO_DATABASE_USERNAME: ${MATOMO_DB_USER}
-      MATOMO_DATABASE_PASSWORD: ${MATOMO_DB_PASSWORD}
-      MATOMO_DATABASE_DBNAME: ${MATOMO_DB_NAME}
-    volumes:
-      - matomo_data:/var/www/html
-    ports:
-      - "${MATOMO_PORT}:80"
-    networks:
-      - monitoring
-    depends_on:
-      - matomo-db
-
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
@@ -176,5 +142,3 @@ volumes:
   alertmanager_data:
   loki_data:
   tempo_data:
-  matomo_db:
-  matomo_data:

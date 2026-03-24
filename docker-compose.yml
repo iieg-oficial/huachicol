@@ -66,11 +66,12 @@ services:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
 
   alertmanager-discord:
-    image: benjojo/alertmanager-discord:latest
+    image: rogerrum/alertmanager-discord:latest
     container_name: alertmanager-discord
     restart: unless-stopped
     environment:
       DISCORD_WEBHOOK: ${DISCORD_WEBHOOK_URL}
+      DISCORD_USERNAME: "Huachicol Alerts"
     networks:
       - monitoring
 

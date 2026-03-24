@@ -21,6 +21,7 @@ scrape_configs:
           service: 'prometheus'
 
   - job_name: 'grafana'
+    metrics_path: '/huachicol/metrics'
     static_configs:
       - targets: ['grafana:3000']
         labels:

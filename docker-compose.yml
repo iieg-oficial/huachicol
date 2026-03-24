@@ -79,23 +79,6 @@ services:
       - monitoring
       - iieg-network
 
-  tempo:
-    image: grafana/tempo:latest
-    container_name: tempo
-    restart: unless-stopped
-    command: [ "-config.file=/etc/tempo/tempo-config.yml" ]
-    volumes:
-      - ./tempo/tempo-config.yml:/etc/tempo/tempo-config.yml
-      - tempo_data:/var/tempo
-    ports:
-      - "${TEMPO_PORT}:3200"
-      - "${TEMPO_OTLP_GRPC_PORT}:4317"
-      - "${TEMPO_OTLP_HTTP_PORT}:4318"
-      - "${TEMPO_ZIPKIN_PORT}:9411"
-      - "${TEMPO_JAEGER_PORT}:14268"
-    networks:
-      - monitoring
-
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
@@ -143,4 +126,3 @@ volumes:
   grafana_data:
   alertmanager_data:
   loki_data:
-  tempo_data:

@@ -33,12 +33,6 @@ scrape_configs:
         labels:
           service: 'loki'
 
-  - job_name: 'tempo'
-    static_configs:
-      - targets: ['tempo:3200']
-        labels:
-          service: 'tempo'
-
   - job_name: 'urlschiquitas-backend'
     static_configs:
       - targets: ['host.docker.internal:9090']

@@ -38,7 +38,7 @@ services:
       GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS}
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
       - grafana_data:/var/lib/grafana
     ports:
       - "${GRAFANA_PORT}:3000"

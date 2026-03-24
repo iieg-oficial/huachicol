@@ -9,24 +9,4 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /etc/grafana/provisioning/dashboards
-
-  - name: 'projects'
-    orgId: 1
-    folder: 'Projects'
-    type: file
-    disableDeletion: false
-    updateIntervalSeconds: 30
-    allowUiUpdates: true
-    options:
-      path: /etc/grafana/provisioning/dashboards/projects
-
-  - name: 'infrastructure'
-    orgId: 1
-    folder: 'Infrastructure'
-    type: file
-    disableDeletion: false
-    updateIntervalSeconds: 30
-    allowUiUpdates: true
-    options:
-      path: /etc/grafana/provisioning/dashboards/infrastructure
+      path: /var/lib/grafana/dashboards

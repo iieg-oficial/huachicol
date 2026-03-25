@@ -57,6 +57,15 @@ scrape_configs:
           service: 'backend'
           environment: 'production'
 
+  - job_name: 'acervo-minio'
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ['acervo-minio:9000']
+        labels:
+          project: 'acervo'
+          service: 'minio'
+          environment: 'production'
+
   - job_name: 'gateway-nginx'
     static_configs:
       - targets: ['nginx-exporter:9113']
@@ -65,14 +74,12 @@ scrape_configs:
           service: 'nginx'
           environment: 'production'
 
-  # --- Métricas de host (node-exporter) por servidor ---
   - job_name: 'node-exporter'
     file_sd_configs:
       - files:
           - '/etc/prometheus/targets/node-exporter.json'
         refresh_interval: 30s
 
-  # --- Métricas de contenedores (cAdvisor) por servidor ---
   - job_name: 'cadvisor'
     file_sd_configs:
       - files:

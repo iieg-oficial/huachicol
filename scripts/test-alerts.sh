@@ -6,7 +6,7 @@ send_alert() {
     local name="$1"
     local payload="$2"
     echo -n "Enviando $name... "
-    code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$ALERTMANAGER_URL/api/v1/alerts" \
+    code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$ALERTMANAGER_URL/api/v2/alerts" \
         -H "Content-Type: application/json" \
         -d "$payload")
     if [ "$code" = "200" ]; then
@@ -172,8 +172,8 @@ alert_too_many_connections() {
 list_alerts() {
     echo "Alertas activas en Alertmanager:"
     echo ""
-    curl -s "$ALERTMANAGER_URL/api/v1/alerts" | python3 -m json.tool 2>/dev/null || \
-        curl -s "$ALERTMANAGER_URL/api/v1/alerts"
+    curl -s "$ALERTMANAGER_URL/api/v2/alerts" | python3 -m json.tool 2>/dev/null || \
+        curl -s "$ALERTMANAGER_URL/api/v2/alerts"
 }
 
 case "${1:-}" in

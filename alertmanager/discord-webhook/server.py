@@ -5,11 +5,24 @@ import json, os, urllib.error, urllib.request
 DISCORD_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
 COLORS = {
-    "firing": {
-        "critical": 0xED4245,
-        "warning": 0xFEE75C,
-    },
+    "critical": 0xED4245,
+    "warning": 0xFEE75C,
     "resolved": 0x57F287,
+}
+
+SEVERITY_ICONS = {
+    "critical": "\U0001f6a8",
+    "warning": "\u26a0\ufe0f",
+}
+
+ALERT_TITLES = {
+    "ServiceDown": "Servicio caido",
+    "HighLatency": "Latencia alta",
+    "HighErrorRate": "Tasa de errores alta",
+    "HighMemoryUsage": "Uso de memoria alto",
+    "DiskSpaceLow": "Espacio en disco bajo",
+    "PostgreSQLDown": "PostgreSQL caido",
+    "TooManyConnections": "Demasiadas conexiones",
 }
 
 TEST_PAYLOAD = {
@@ -19,11 +32,13 @@ TEST_PAYLOAD = {
             "labels": {
                 "alertname": "TestAlert",
                 "service": "test-service",
+                "project": "test-project",
+                "instance": "localhost:9090",
                 "severity": "warning",
             },
             "annotations": {
                 "summary": "Alerta de prueba",
-                "description": "Esta es una alerta de prueba para verificar la integración con Discord.",
+                "description": "Esta es una alerta de prueba para verificar la integracion con Discord.",
             },
             "startsAt": datetime.now(timezone.utc).isoformat(),
         },
@@ -32,11 +47,13 @@ TEST_PAYLOAD = {
             "labels": {
                 "alertname": "TestAlertResolved",
                 "service": "test-service",
+                "project": "test-project",
+                "instance": "localhost:9090",
                 "severity": "critical",
             },
             "annotations": {
                 "summary": "Alerta resuelta de prueba",
-                "description": "Esta alerta resuelta es parte de la prueba de integración.",
+                "description": "Esta alerta resuelta es parte de la prueba de integracion.",
             },
             "startsAt": datetime.now(timezone.utc).isoformat(),
             "endsAt": datetime.now(timezone.utc).isoformat(),
@@ -50,31 +67,41 @@ def build_embed(alert: dict) -> dict:
     labels = alert.get("labels", {})
     annotations = alert.get("annotations", {})
     severity = labels.get("severity", "unknown")
+    alertname = labels.get("alertname", "N/A")
+
+    translated = ALERT_TITLES.get(alertname, alertname)
 
     if status == "resolved":
         color = COLORS["resolved"]
-        title = f"\u2705 {labels.get('alertname', 'N/A')} — Resuelta"
+        title = f"\u2705 {translated}"
+        description = f"**{alertname}** se ha resuelto."
     else:
-        color = COLORS["firing"].get(severity, 0x99AAB5)
-        icon = "\U0001f6a8" if severity == "critical" else "\u26a0\ufe0f"
-        title = f"{icon} {labels.get('alertname', 'N/A')} — {severity.upper()}"
+        color = COLORS.get(severity, 0x99AAB5)
+        icon = SEVERITY_ICONS.get(severity, "\u2753")
+        title = f"{icon} {translated}"
+        sev_label = "CRITICO" if severity == "critical" else "ADVERTENCIA"
+        description = f"**{alertname}** — {sev_label}"
 
     fields = []
 
     if annotations.get("description"):
-        fields.append({"name": "Descripcion", "value": annotations["description"], "inline": False})
+        fields.append({"name": "Detalle", "value": annotations["description"], "inline": False})
 
     if labels.get("service"):
-        fields.append({"name": "Servicio", "value": labels["service"], "inline": True})
+        fields.append({"name": "Servicio", "value": f"`{labels['service']}`", "inline": True})
 
     if labels.get("project"):
-        fields.append({"name": "Proyecto", "value": labels["project"], "inline": True})
+        fields.append({"name": "Proyecto", "value": f"`{labels['project']}`", "inline": True})
 
     if labels.get("instance"):
-        fields.append({"name": "Instancia", "value": labels["instance"], "inline": True})
+        fields.append({"name": "Instancia", "value": f"`{labels['instance']}`", "inline": True})
+
+    if labels.get("server"):
+        fields.append({"name": "Servidor", "value": f"`{labels['server']}`", "inline": True})
 
     embed = {
         "title": title,
+        "description": description,
         "color": color,
         "fields": fields,
     }
@@ -86,16 +113,19 @@ def build_embed(alert: dict) -> dict:
     if status == "resolved":
         ends_at = alert.get("endsAt", "")
         if ends_at and not ends_at.startswith("0001"):
-            fields.append({"name": "Resuelta a las", "value": f"<t:{int(datetime.fromisoformat(ends_at).timestamp())}:T>", "inline": True})
+            try:
+                ts = int(datetime.fromisoformat(ends_at).timestamp())
+                fields.append({"name": "Resuelta", "value": f"<t:{ts}:R>", "inline": True})
+            except (ValueError, OSError):
+                pass
+
+    embed["footer"] = {"text": "IIEG Monitoring"}
 
     return embed
 
 
 def format_embeds(body: dict) -> list[dict]:
-    embeds = []
-    for alert in body.get("alerts", []):
-        embeds.append(build_embed(alert))
-    return embeds[:10]
+    return [build_embed(a) for a in body.get("alerts", [])][:10]
 
 
 def send_to_discord(embeds: list[dict]) -> bool:

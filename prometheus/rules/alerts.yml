@@ -8,8 +8,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Service {{ $labels.job }} is down"
-          description: "{{ $labels.job }} ({{ $labels.instance }}) has been down for more than 1 minute."
+          summary: "Servicio {{ $labels.job }} caido"
+          description: "{{ $labels.job }} ({{ $labels.instance }}) lleva mas de 1 minuto sin responder."
 
       - alert: HighLatency
         expr: |
@@ -20,8 +20,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "High latency on {{ $labels.project }}"
-          description: "Average latency is {{ $value }}s for {{ $labels.project }}"
+          summary: "Latencia alta en {{ $labels.project }}"
+          description: "La latencia promedio es {{ $value }}s en {{ $labels.project }}."
 
       - alert: HighErrorRate
         expr: |
@@ -32,8 +32,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "High error rate on {{ $labels.project }}"
-          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.project }}"
+          summary: "Tasa de errores alta en {{ $labels.project }}"
+          description: "La tasa de errores 5xx es {{ $value | humanizePercentage }} en {{ $labels.project }}."
 
       - alert: HighMemoryUsage
         expr: |
@@ -43,8 +43,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "High memory usage on {{ $labels.instance }}"
-          description: "Memory usage is above 90% on {{ $labels.instance }}"
+          summary: "Uso de memoria alto en {{ $labels.instance }}"
+          description: "El uso de memoria supera el 90% en {{ $labels.instance }}."
 
       - alert: DiskSpaceLow
         expr: |
@@ -53,8 +53,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Low disk space on {{ $labels.instance }}"
-          description: "Disk space is below 10% on {{ $labels.instance }}"
+          summary: "Espacio en disco bajo en {{ $labels.instance }}"
+          description: "El espacio disponible en disco es menor al 10% en {{ $labels.instance }}."
 
   - name: database_alerts
     interval: 30s
@@ -65,8 +65,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "PostgreSQL is down"
-          description: "PostgreSQL on {{ $labels.instance }} is down"
+          summary: "PostgreSQL caido"
+          description: "PostgreSQL en {{ $labels.instance }} no responde."
 
       - alert: TooManyConnections
         expr: |
@@ -76,5 +76,5 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Too many database connections"
-          description: "Database connections are at {{ $value | humanizePercentage }} of max on {{ $labels.instance }}"
+          summary: "Demasiadas conexiones en la base de datos"
+          description: "Las conexiones estan al {{ $value | humanizePercentage }} del maximo en {{ $labels.instance }}."

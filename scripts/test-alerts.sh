@@ -48,8 +48,8 @@ alert_service_down() {
             "severity": "critical"
         },
         "annotations": {
-            "summary": "Service gateway-nginx is down",
-            "description": "gateway-nginx (nginx-exporter:9113) has been down for more than 1 minute."
+            "summary": "Servicio gateway-nginx caido",
+            "description": "gateway-nginx (nginx-exporter:9113) lleva mas de 1 minuto sin responder."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -67,8 +67,8 @@ alert_high_latency() {
             "severity": "warning"
         },
         "annotations": {
-            "summary": "High latency on urlschiquitas",
-            "description": "Average latency is 2.5s for urlschiquitas"
+            "summary": "Latencia alta en urlschiquitas",
+            "description": "La latencia promedio es 2.5s en urlschiquitas."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -86,8 +86,8 @@ alert_high_error_rate() {
             "severity": "critical"
         },
         "annotations": {
-            "summary": "High error rate on urlschiquitas",
-            "description": "Error rate is 12% on urlschiquitas"
+            "summary": "Tasa de errores alta en urlschiquitas",
+            "description": "La tasa de errores 5xx es 12% en urlschiquitas."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -104,8 +104,8 @@ alert_high_memory() {
             "severity": "warning"
         },
         "annotations": {
-            "summary": "High memory usage on portal-nvo:9100",
-            "description": "Memory usage is above 90% on portal-nvo:9100"
+            "summary": "Uso de memoria alto en portal-nvo:9100",
+            "description": "El uso de memoria supera el 90% en portal-nvo:9100."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -123,8 +123,8 @@ alert_disk_low() {
             "severity": "warning"
         },
         "annotations": {
-            "summary": "Low disk space on portal-nvo:9100",
-            "description": "Disk space is below 10% on portal-nvo:9100"
+            "summary": "Espacio en disco bajo en portal-nvo:9100",
+            "description": "El espacio disponible en disco es menor al 10% en portal-nvo:9100."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -142,8 +142,8 @@ alert_postgres_down() {
             "severity": "critical"
         },
         "annotations": {
-            "summary": "PostgreSQL is down",
-            "description": "PostgreSQL on host.docker.internal:9187 is down"
+            "summary": "PostgreSQL caido",
+            "description": "PostgreSQL en host.docker.internal:9187 no responde."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -161,8 +161,8 @@ alert_too_many_connections() {
             "severity": "warning"
         },
         "annotations": {
-            "summary": "Too many database connections",
-            "description": "Database connections are at 85% of max on host.docker.internal:9187"
+            "summary": "Demasiadas conexiones en la base de datos",
+            "description": "Las conexiones estan al 85% del maximo en host.docker.internal:9187."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"

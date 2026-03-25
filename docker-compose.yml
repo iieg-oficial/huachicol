@@ -69,6 +69,8 @@ services:
     restart: unless-stopped
     environment:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+    ports:
+      - "${ALERTMANAGER_DISCORD_PORT}:9094"
     networks:
       - monitoring
 

@@ -48,14 +48,17 @@ def format_alerts(body: dict) -> str:
 
 
 def send_to_discord(content: str) -> bool:
+    if not DISCORD_URL:
+        print("DISCORD_WEBHOOK_URL no configurada")
+        return False
     payload = json.dumps({"content": content[:2000]}).encode()
-    req = urllib.request.Request(
-        DISCORD_URL,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
     try:
+        req = urllib.request.Request(
+            DISCORD_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         urllib.request.urlopen(req)
         return True
     except Exception as e:
@@ -65,17 +68,22 @@ def send_to_discord(content: str) -> bool:
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        if self.path == "/test":
-            body = TEST_PAYLOAD
-        else:
-            length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length))
+        try:
+            if self.path == "/test":
+                body = TEST_PAYLOAD
+            else:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length))
 
-        content = format_alerts(body)
-        success = send_to_discord(content)
+            content = format_alerts(body)
+            success = send_to_discord(content)
 
-        self.send_response(200 if success else 502)
-        self.end_headers()
+            self.send_response(200 if success else 502)
+            self.end_headers()
+        except Exception as e:
+            print(f"Error procesando request: {e}")
+            self.send_response(500)
+            self.end_headers()
 
     def log_message(self, fmt, *args):
         print(f"[webhook] {fmt % args}")

@@ -56,7 +56,10 @@ def send_to_discord(content: str) -> bool:
         req = urllib.request.Request(
             DISCORD_URL,
             data=payload,
-            headers={"Content-Type": "application/json"},
+            headers={
+            "Content-Type": "application/json",
+            "User-Agent": "AlertmanagerDiscord/1.0",
+        },
             method="POST",
         )
         urllib.request.urlopen(req)

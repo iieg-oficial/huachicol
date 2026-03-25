@@ -1,5 +1,5 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from datetime import datetime, timezone
+from datetime import datetime
 import json, os, urllib.error, urllib.request
 
 DISCORD_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
@@ -23,42 +23,6 @@ ALERT_TITLES = {
     "DiskSpaceLow": "Espacio en disco bajo",
     "PostgreSQLDown": "PostgreSQL caido",
     "TooManyConnections": "Demasiadas conexiones",
-}
-
-TEST_PAYLOAD = {
-    "alerts": [
-        {
-            "status": "firing",
-            "labels": {
-                "alertname": "TestAlert",
-                "service": "test-service",
-                "project": "test-project",
-                "instance": "localhost:9090",
-                "severity": "warning",
-            },
-            "annotations": {
-                "summary": "Alerta de prueba",
-                "description": "Esta es una alerta de prueba para verificar la integracion con Discord.",
-            },
-            "startsAt": datetime.now(timezone.utc).isoformat(),
-        },
-        {
-            "status": "resolved",
-            "labels": {
-                "alertname": "TestAlertResolved",
-                "service": "test-service",
-                "project": "test-project",
-                "instance": "localhost:9090",
-                "severity": "critical",
-            },
-            "annotations": {
-                "summary": "Alerta resuelta de prueba",
-                "description": "Esta alerta resuelta es parte de la prueba de integracion.",
-            },
-            "startsAt": datetime.now(timezone.utc).isoformat(),
-            "endsAt": datetime.now(timezone.utc).isoformat(),
-        },
-    ]
 }
 
 
@@ -156,11 +120,10 @@ def send_to_discord(embeds: list[dict]) -> bool:
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            if self.path == "/test":
-                body = TEST_PAYLOAD
-            else:
-                length = int(self.headers.get("Content-Length", 0))
-                body = json.loads(self.rfile.read(length))
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length))
+            for a in body.get("alerts", []):
+                print(f"[alert] {a.get('status')} | {a['labels'].get('alertname')} | severity={a['labels'].get('severity')}")
 
             embeds = format_embeds(body)
             success = send_to_discord(embeds)

@@ -4,7 +4,7 @@ groups:
     rules:
       - alert: ServiceDown
         expr: up == 0
-        for: 1m
+        for: 5m
         labels:
           severity: critical
         annotations:

@@ -1,5 +1,5 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import json, os, urllib.request
+import json, os, urllib.error, urllib.request
 
 DISCORD_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
@@ -61,6 +61,9 @@ def send_to_discord(content: str) -> bool:
         )
         urllib.request.urlopen(req)
         return True
+    except urllib.error.HTTPError as e:
+        print(f"Discord respondio {e.code}: {e.read().decode()}")
+        return False
     except Exception as e:
         print(f"Error enviando a Discord: {e}")
         return False

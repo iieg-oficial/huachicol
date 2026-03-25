@@ -62,8 +62,6 @@ services:
       - "${ALERTMANAGER_PORT}:9093"
     networks:
       - monitoring
-    environment:
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
 
   alertmanager-discord:
     build: ./alertmanager/discord-webhook

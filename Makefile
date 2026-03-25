@@ -1,6 +1,6 @@
 .PHONY: help start stop restart logs clean status \
        agent-start agent-stop agent-restart agent-logs agent-clean agent-status \
-       network
+       network test-alert test-alerts alert-list
 
 NETWORK_NAME := iieg-network
 AGENT_DIR := agent
@@ -25,6 +25,11 @@ help:
 	@echo "    make agent-logs    - Ver logs del agente"
 	@echo "    make agent-status  - Ver estado del agente"
 	@echo "    make agent-clean   - Detener agente y eliminar datos"
+	@echo ""
+	@echo "  Alertas:"
+	@echo "    make test-alert ALERT=service-down  - Probar una alerta especifica"
+	@echo "    make test-alerts                    - Probar todas las alertas"
+	@echo "    make alert-list                     - Ver alertas activas"
 	@echo ""
 	@echo "  Red:"
 	@echo "    make network     - Crear red compartida ($(NETWORK_NAME))"
@@ -84,3 +89,14 @@ agent-status:
 agent-clean:
 	docker compose -f $(AGENT_DIR)/docker-compose.yml down -v
 	@echo "Datos del agente eliminados"
+
+# --- Alertas ---
+
+test-alert:
+	@./scripts/test-alerts.sh $(ALERT)
+
+test-alerts:
+	@./scripts/test-alerts.sh all
+
+alert-list:
+	@./scripts/test-alerts.sh list

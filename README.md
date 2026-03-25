@@ -104,3 +104,8 @@ logger.add(new LokiTransport({
 
 - Prometheus: 30 días
 - Loki: 30 días (744h)
+
+## Documentación
+
+- [Alertas Discord](docs/discord-alerts.md) — flujo, configuración y pruebas
+- [Reglas de Alerta](docs/alert-rules.md) — situaciones monitoreadas, qué significan y cómo actuar

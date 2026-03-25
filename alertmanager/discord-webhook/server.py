@@ -1,7 +1,16 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from datetime import datetime, timezone
 import json, os, urllib.error, urllib.request
 
 DISCORD_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+
+COLORS = {
+    "firing": {
+        "critical": 0xED4245,
+        "warning": 0xFEE75C,
+    },
+    "resolved": 0x57F287,
+}
 
 TEST_PAYLOAD = {
     "alerts": [
@@ -13,8 +22,10 @@ TEST_PAYLOAD = {
                 "severity": "warning",
             },
             "annotations": {
+                "summary": "Alerta de prueba",
                 "description": "Esta es una alerta de prueba para verificar la integración con Discord.",
             },
+            "startsAt": datetime.now(timezone.utc).isoformat(),
         },
         {
             "status": "resolved",
@@ -24,42 +35,82 @@ TEST_PAYLOAD = {
                 "severity": "critical",
             },
             "annotations": {
+                "summary": "Alerta resuelta de prueba",
                 "description": "Esta alerta resuelta es parte de la prueba de integración.",
             },
+            "startsAt": datetime.now(timezone.utc).isoformat(),
+            "endsAt": datetime.now(timezone.utc).isoformat(),
         },
     ]
 }
 
 
-def format_alerts(body: dict) -> str:
-    lines = []
+def build_embed(alert: dict) -> dict:
+    status = alert.get("status", "unknown")
+    labels = alert.get("labels", {})
+    annotations = alert.get("annotations", {})
+    severity = labels.get("severity", "unknown")
+
+    if status == "resolved":
+        color = COLORS["resolved"]
+        title = f"\u2705 {labels.get('alertname', 'N/A')} — Resuelta"
+    else:
+        color = COLORS["firing"].get(severity, 0x99AAB5)
+        icon = "\U0001f6a8" if severity == "critical" else "\u26a0\ufe0f"
+        title = f"{icon} {labels.get('alertname', 'N/A')} — {severity.upper()}"
+
+    fields = []
+
+    if annotations.get("description"):
+        fields.append({"name": "Descripcion", "value": annotations["description"], "inline": False})
+
+    if labels.get("service"):
+        fields.append({"name": "Servicio", "value": labels["service"], "inline": True})
+
+    if labels.get("project"):
+        fields.append({"name": "Proyecto", "value": labels["project"], "inline": True})
+
+    if labels.get("instance"):
+        fields.append({"name": "Instancia", "value": labels["instance"], "inline": True})
+
+    embed = {
+        "title": title,
+        "color": color,
+        "fields": fields,
+    }
+
+    starts_at = alert.get("startsAt", "")
+    if starts_at and not starts_at.startswith("0001"):
+        embed["timestamp"] = starts_at
+
+    if status == "resolved":
+        ends_at = alert.get("endsAt", "")
+        if ends_at and not ends_at.startswith("0001"):
+            fields.append({"name": "Resuelta a las", "value": f"<t:{int(datetime.fromisoformat(ends_at).timestamp())}:T>", "inline": True})
+
+    return embed
+
+
+def format_embeds(body: dict) -> list[dict]:
+    embeds = []
     for alert in body.get("alerts", []):
-        status = alert.get("status", "unknown")
-        labels = alert.get("labels", {})
-        annotations = alert.get("annotations", {})
-        emoji = "\U0001f534" if status == "firing" else "\U0001f7e2"
-        lines.append(
-            f'{emoji} **{labels.get("alertname", "N/A")}** ({status})\n'
-            f'Servicio: {labels.get("service", "N/A")}\n'
-            f'Severidad: {labels.get("severity", "N/A")}\n'
-            f'{annotations.get("description", "")}'
-        )
-    return "\n---\n".join(lines) if lines else "Sin alertas"
+        embeds.append(build_embed(alert))
+    return embeds[:10]
 
 
-def send_to_discord(content: str) -> bool:
+def send_to_discord(embeds: list[dict]) -> bool:
     if not DISCORD_URL:
         print("DISCORD_WEBHOOK_URL no configurada")
         return False
-    payload = json.dumps({"content": content[:2000]}).encode()
+    payload = json.dumps({"embeds": embeds}).encode()
     try:
         req = urllib.request.Request(
             DISCORD_URL,
             data=payload,
             headers={
-            "Content-Type": "application/json",
-            "User-Agent": "AlertmanagerDiscord/1.0",
-        },
+                "Content-Type": "application/json",
+                "User-Agent": "AlertmanagerDiscord/1.0",
+            },
             method="POST",
         )
         urllib.request.urlopen(req)
@@ -81,8 +132,8 @@ class Handler(BaseHTTPRequestHandler):
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length))
 
-            content = format_alerts(body)
-            success = send_to_discord(content)
+            embeds = format_embeds(body)
+            success = send_to_discord(embeds)
 
             self.send_response(200 if success else 502)
             self.end_headers()

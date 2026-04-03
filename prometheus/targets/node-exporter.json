@@ -1,32 +1,6 @@
 [
   {
     "targets": ["node-exporter:9100"],
-    "labels": {
-      "server": "monitoring"
-    }
-  },
-  {
-    "targets": ["PORTAL_SERVER_IP:9100"],
-    "labels": {
-      "server": "portal"
-    }
-  },
-  {
-    "targets": ["MAPALAB_SERVER_IP:9100"],
-    "labels": {
-      "server": "mapalab"
-    }
-  },
-  {
-    "targets": ["MARIACHI_SERVER_IP:9100"],
-    "labels": {
-      "server": "mariachi"
-    }
-  },
-  {
-    "targets": ["GEOSERVER_SERVER_IP:9100"],
-    "labels": {
-      "server": "geoserver"
-    }
+    "labels": { "server": "monitoring" }
   }
 ]

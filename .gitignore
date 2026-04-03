@@ -1,1 +1,4 @@
 .env
+agent/.env
+prometheus/targets/*.json
+prometheus/targets/minio-token

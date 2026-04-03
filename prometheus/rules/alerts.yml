@@ -78,3 +78,71 @@ groups:
         annotations:
           summary: "Too many database connections"
           description: "Database connections are at {{ $value | humanizePercentage }} of max on {{ $labels.instance }}"
+
+  - name: monitoring_stack_alerts
+    interval: 30s
+    rules:
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Loki is down"
+          description: "Loki log aggregation service is unreachable"
+
+      - alert: TempoDown
+        expr: up{job="tempo"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Tempo is down"
+          description: "Tempo tracing service is unreachable"
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Grafana is down"
+          description: "Grafana dashboard service is unreachable"
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager is down"
+          description: "Alertmanager is unreachable - alerts will not be delivered"
+
+      - alert: PrometheusStorageHigh
+        expr: |
+          (prometheus_tsdb_storage_size_bytes / (node_filesystem_size_bytes{mountpoint="/"}) > 0.3)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus storage consuming significant disk"
+          description: "Prometheus TSDB is using more than 30% of disk space"
+
+      - alert: PrometheusTargetScrapeFailure
+        expr: increase(prometheus_target_scrapes_exceeded_sample_limit_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus scrape failures detected"
+          description: "Some targets are exceeding sample limits"
+
+      - alert: LokiHighIngestionRate
+        expr: |
+          rate(loki_distributor_bytes_received_total[5m]) > 10485760
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki ingestion rate is high"
+          description: "Loki is receiving more than 10MB/s of logs"

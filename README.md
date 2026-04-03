@@ -1,80 +1,82 @@
 # IIEG Monitoring Stack
 
-Servidor centralizado de monitoreo y analytics para todos los proyectos.
+Servidor centralizado de monitoreo y observabilidad para todos los proyectos del IIEG.
 
-## Stack Incluido
+## Stack
 
-- **Prometheus** - Métricas y monitoreo
-- **Grafana** - Visualización y dashboards
-- **AlertManager** - Gestión de alertas
-- **Loki** - Logs centralizados
-- **Tempo** - Distributed tracing
-- **Matomo** - Analytics de usuarios
-- **Node Exporter** - Métricas del servidor
-- **cAdvisor** - Métricas de containers
+- **Prometheus** — Metricas y monitoreo
+- **Grafana** — Dashboards
+- **AlertManager** — Alertas a Discord
+- **Loki** — Logs centralizados
+- **Tempo** — Distributed tracing
+- **Node Exporter** — Metricas del servidor
+- **cAdvisor** — Metricas de contenedores
 
-## Inicio Rápido
+## Inicio Rapido
 
 ```bash
 cp .env.example .env
-nano .env
+nano .env            # Configurar variables
 make start
 ```
 
-## Acceso a Servicios
+## Servicios
 
 | Servicio | Puerto | URL |
 |----------|--------|-----|
 | Grafana | 9000 | http://localhost:9000 |
 | Prometheus | 9001 | http://localhost:9001 |
+| Prometheus (auth) | 9091 | http://localhost:9091 |
 | AlertManager | 9002 | http://localhost:9002 |
 | Loki | 9003 | http://localhost:9003 |
+| Loki (auth) | 3101 | http://localhost:3101 |
 | Tempo | 9004 | http://localhost:9004 |
-| Matomo | 9009 | http://localhost:9009 |
-| cAdvisor | 9011 | http://localhost:9011 |
 | Node Exporter | 9010 | http://localhost:9010 |
+| cAdvisor | 9011 | http://localhost:9011 |
 
-## Credenciales Default
+## Comandos
 
-**Grafana:**
-- Usuario: (configurar en .env)
-- Password: (configurar en .env)
+```bash
+# Stack principal
+make start       # Crear red e iniciar stack
+make stop        # Detener
+make restart     # Reiniciar
+make logs        # Ver logs
+make status      # Ver estado
+make clean       # Detener y eliminar datos
 
-**Matomo:**
-- Configurar en primer acceso
+# Agente remoto
+make agent-start   # Iniciar agente en servidor remoto
+make agent-stop    # Detener agente
 
-## Configurar Discord Alerts
+# Backups
+make backup              # Backup manual a MinIO
+make backup-cron-install # Cron mensual (dia 1, 3AM)
+make backup-cron-remove  # Remover cron
+```
 
-1. En Discord: Server Settings → Integrations → Webhooks → New Webhook
-2. Copiar webhook URL y agregar `/slack` al final
-3. Agregar al .env: `DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/ID/TOKEN/slack`
-4. Reiniciar: `make restart`
+## Configurar Alertas Discord
 
-## Agregar Proyectos
+1. Discord: Server Settings > Integrations > Webhooks > New Webhook
+2. Copiar URL y agregar `/slack` al final
+3. Poner en .env: `DISCORD_WEBHOOK_URL=<TU_WEBHOOK_URL>/slack`
+4. `make restart`
+
+## Agregar Proyecto
 
 Editar `prometheus/prometheus.yml`:
 
 ```yaml
 - job_name: 'mi-proyecto'
   static_configs:
-    - targets: ['192.168.1.x:9090']
+    - targets: ['<SERVER_IP>:9090']
       labels:
         project: 'mi-proyecto'
 ```
 
-## Comandos
+## Integracion con Backends
 
-```bash
-make start    # Iniciar stack
-make stop     # Detener stack
-make restart  # Reiniciar stack
-make logs     # Ver logs
-make clean    # Limpiar datos
-```
-
-## Integración con Proyectos
-
-### Backend Node.js
+### Metricas (Prometheus)
 
 ```javascript
 const promClient = require('prom-client');
@@ -82,52 +84,33 @@ const register = new promClient.Registry();
 promClient.collectDefaultMetrics({ register });
 
 app.get('/metrics', async (req, res) => {
-	res.set('Content-Type', register.contentType);
-	res.end(await register.metrics());
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 ```
 
-### Logs con Loki
+### Logs (Loki)
 
 ```javascript
 const winston = require('winston');
 const LokiTransport = require('winston-loki');
 
 logger.add(new LokiTransport({
-	host: 'http://localhost:3100',
-	labels: { app: 'mi-proyecto' }
+  host: 'http://localhost:3100',
+  labels: { app: 'mi-proyecto' }
 }));
 ```
 
-### Analytics con Matomo
+## Documentacion
 
-```html
-<script>
-var _paq = window._paq = window._paq || [];
-_paq.push(['trackPageView']);
-_paq.push(['enableLinkTracking']);
-(function() {
-	var u="//localhost:8081/";
-	_paq.push(['setTrackerUrl', u+'matomo.php']);
-	_paq.push(['setSiteId', '1']);
-	var d=document, g=d.createElement('script');
-	g.async=true; g.src=u+'matomo.js';
-	d.getElementsByTagName('head')[0].appendChild(g);
-})();
-</script>
-```
+- [Onboarding agente](docs/onboarding-agente.md) — Desplegar agente en servidor nuevo
+- [Pendientes](docs/pendientes/) — Mejoras planeadas (Authentik, gateway)
 
-## Recursos
+## Retencion de Datos
 
-- Prometheus: ~500MB RAM
-- Grafana: ~200MB RAM
-- Loki: ~300MB RAM
-- Tempo: ~200MB RAM
-- Matomo: ~500MB RAM
-- Total: ~2GB RAM recomendado
-
-## Retención de Datos
-
-- Prometheus: 30 días
-- Loki: 30 días (744h)
-- Tempo: 7 días (168h)
+| Servicio | Retencion |
+|----------|-----------|
+| Prometheus | 30 dias |
+| Loki | 30 dias |
+| Tempo | 7 dias |
+| Backups | 3 meses |

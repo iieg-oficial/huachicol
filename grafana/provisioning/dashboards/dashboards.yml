@@ -9,7 +9,7 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /etc/grafana/provisioning/dashboards
+      path: /var/lib/grafana/dashboards
 
   - name: 'projects'
     orgId: 1
@@ -19,7 +19,7 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /etc/grafana/provisioning/dashboards/projects
+      path: /var/lib/grafana/dashboards/projects
 
   - name: 'infrastructure'
     orgId: 1
@@ -29,4 +29,4 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /etc/grafana/provisioning/dashboards/infrastructure
+      path: /var/lib/grafana/dashboards/infrastructure

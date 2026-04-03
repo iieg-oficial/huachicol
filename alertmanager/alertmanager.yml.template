@@ -1,6 +1,6 @@
 global:
   resolve_timeout: 5m
-  slack_api_url: 'https://discord.com/api/webhooks/1438612810258186280/wLxcZH-bW8f4VnzBNiEpw34fUqShyTHvC4aQmynu_GCe81xtbG6zlZgDVctPoaF9ISEm/slack'
+  slack_api_url: 'DISCORD_WEBHOOK_PLACEHOLDER'
 
 route:
   group_by: ['alertname', 'cluster', 'service']

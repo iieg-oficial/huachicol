@@ -19,12 +19,14 @@ help:
 	@echo "    make clean       - Detener y eliminar datos"
 	@echo ""
 	@echo "  Agente (servidores remotos):"
-	@echo "    make agent-start   - Iniciar agente huachicol"
-	@echo "    make agent-stop    - Detener agente"
-	@echo "    make agent-restart - Reiniciar agente"
-	@echo "    make agent-logs    - Ver logs del agente"
-	@echo "    make agent-status  - Ver estado del agente"
-	@echo "    make agent-clean   - Detener agente y eliminar datos"
+	@echo "    make agent-start                - Iniciar agente completo"
+	@echo "    make agent-start PROFILES=\"node cadvisor\"  - Solo servicios especificos"
+	@echo "    make agent-stop                 - Detener agente"
+	@echo "    make agent-restart              - Reiniciar agente"
+	@echo "    make agent-logs                 - Ver logs del agente"
+	@echo "    make agent-status               - Ver estado del agente"
+	@echo "    make agent-clean                - Detener agente y eliminar datos"
+	@echo "    Profiles: node, cadvisor, promtail, postgres"
 	@echo ""
 	@echo "  Backups:"
 	@echo "    make backup              - Ejecutar backup manual a MinIO"
@@ -77,29 +79,33 @@ clean:
 
 # --- Agente ---
 
+AGENT_PROFILES ?= all
+AGENT_PROFILE_FLAGS := $(foreach p,$(PROFILES) $(AGENT_PROFILES),--profile $(p))
+AGENT_CMD := docker compose -f $(AGENT_DIR)/docker-compose.yml $(AGENT_PROFILE_FLAGS)
+
 agent-start: network
 	@if [ ! -f $(AGENT_DIR)/.env ]; then \
 		cp $(AGENT_DIR)/.env.example $(AGENT_DIR)/.env; \
 		echo "Archivo $(AGENT_DIR)/.env creado. Configura SERVER_NAME y LOKI_URL antes de continuar."; \
 		exit 1; \
 	fi
-	docker compose -f $(AGENT_DIR)/docker-compose.yml up -d
+	$(AGENT_CMD) up -d
 	@echo "Agente iniciado"
 
 agent-stop:
-	docker compose -f $(AGENT_DIR)/docker-compose.yml down
+	$(AGENT_CMD) down
 
 agent-restart:
-	docker compose -f $(AGENT_DIR)/docker-compose.yml restart
+	$(AGENT_CMD) restart
 
 agent-logs:
-	docker compose -f $(AGENT_DIR)/docker-compose.yml logs -f
+	$(AGENT_CMD) logs -f
 
 agent-status:
-	@docker compose -f $(AGENT_DIR)/docker-compose.yml ps
+	@$(AGENT_CMD) ps
 
 agent-clean:
-	docker compose -f $(AGENT_DIR)/docker-compose.yml down -v
+	$(AGENT_CMD) down -v
 	@echo "Datos del agente eliminados"
 
 # --- Backups ---

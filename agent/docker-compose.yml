@@ -3,7 +3,7 @@ name: huachicol-agent
 services:
   node-exporter:
     image: prom/node-exporter:v1.8.2
-    container_name: node-exporter
+    container_name: huachicol-node-exporter
     restart: unless-stopped
     command:
       - '--path.procfs=/host/proc'
@@ -17,10 +17,13 @@ services:
       - /:/rootfs:ro
     ports:
       - "${NODE_EXPORTER_PORT:-9100}:9100"
+    profiles:
+      - all
+      - node
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
-    container_name: cadvisor
+    container_name: huachicol-cadvisor
     restart: unless-stopped
     privileged: true
     command:
@@ -35,10 +38,13 @@ services:
       - /cgroup:/cgroup:ro
     ports:
       - "${CADVISOR_PORT:-8080}:8080"
+    profiles:
+      - all
+      - cadvisor
 
   promtail:
     image: grafana/promtail:3.4.2
-    container_name: promtail
+    container_name: huachicol-promtail
     restart: unless-stopped
     command: -config.file=/etc/promtail/config.yml -config.expand-env=true
     environment:
@@ -49,10 +55,13 @@ services:
       - promtail_positions:/data
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    profiles:
+      - all
+      - promtail
 
   postgres-exporter:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
-    container_name: postgres-exporter
+    container_name: huachicol-postgres-exporter
     restart: unless-stopped
     command:
       - '--web.telemetry-path=/huachicol'

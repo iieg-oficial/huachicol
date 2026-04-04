@@ -197,7 +197,7 @@ services:
           cpus: '0.25'
 
   cadvisor:
-    image: ghcr.io/google/cadvisor:v0.56.2
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     container_name: cadvisor
     restart: unless-stopped
     privileged: true

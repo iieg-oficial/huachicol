@@ -12,8 +12,8 @@ if [ -f "$PROJECT_DIR/$ENV_FILE" ]; then
 fi
 
 MINIO_ENDPOINT="${MINIO_ENDPOINT:?MINIO_ENDPOINT is required}"
-MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}"
-MINIO_SECRET_KEY="${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}"
+MINIO_BUCKET_USER="${MINIO_BUCKET_USER:?MINIO_BUCKET_USER is required}"
+MINIO_BUCKET_PASSWORD="${MINIO_BUCKET_PASSWORD:?MINIO_BUCKET_PASSWORD is required}"
 BUCKET="huachicol"
 
 DATE="${1:-}"
@@ -53,7 +53,7 @@ docker run --rm \
     --network iieg-network \
     -v "${RESTORE_DIR}:/restore" \
     --entrypoint sh minio/mc -c "
-        mc alias set acervo '${MINIO_ENDPOINT}' '${MINIO_ACCESS_KEY}' '${MINIO_SECRET_KEY}' && \
+        mc alias set acervo '${MINIO_ENDPOINT}' '${MINIO_BUCKET_USER}' '${MINIO_BUCKET_PASSWORD}' && \
         mc cp acervo/${BUCKET}/monthly/backup-${DATE}.tar.gz /restore/
     "
 

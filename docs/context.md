@@ -1,7 +1,7 @@
 # Contexto Completo del Ecosistema IIEG: Huachicol + Gateway-Hub
 
 > Referencia completa para que cualquier sesion de Claude Code entienda el ecosistema sin re-analizar archivos.
-> Ultima actualizacion: 2026-04-03
+> Ultima actualizacion: 2026-04-04
 
 ---
 
@@ -23,7 +23,7 @@ Stack centralizado de monitoreo y observabilidad. Servicios Docker:
 | Servicio | Imagen | Funcion | Puerto host |
 |---|---|---|---|
 | Prometheus | prom/prometheus:v3.2.1 | Metricas (scraping) | PROMETHEUS_PORT (default 9090) |
-| Grafana | grafana/grafana:12.0.1 | Dashboards | GRAFANA_PORT (default 3000) |
+| Grafana | grafana/grafana:12.0.1 | Dashboards | GRAFANA_PORT (default 3000). Sirve desde subpath `/huachicol/` (`GF_SERVER_SERVE_FROM_SUB_PATH=true`, hardcoded en docker-compose). |
 | Alertmanager | prom/alertmanager:v0.28.1 | Alertas a Discord | ALERTMANAGER_PORT (default 9002) |
 | Loki | grafana/loki:3.4.2 | Logs centralizados | LOKI_PORT (default 9003) |
 | Tempo | grafana/tempo:2.7.0 | Trazas distribuidas | TEMPO_PORT (default 9004) |
@@ -122,7 +122,7 @@ huachicol/
 │   └── pendientes/
 │       ├── authentik.md            # Plan futuro: reemplazar basic auth con Authentik IdP
 │       └── gateway-improvements.md # Rate limiting, log rotation, Promtail → Alloy
-├── context/huachicol.md            # Este archivo
+├── docs/context.md                 # Este archivo
 ├── .github/workflows/validate.yml  # CI: yamllint, docker compose config, promtool check
 ├── LICENSE                         # MIT
 └── README.md
@@ -140,7 +140,7 @@ huachicol/
 | Acervo Console | `/acervo/console/` | host.docker.internal:9001 | VPN-only |
 | GeoServer OWS/WFS/WCS | `/geoserver/ows`, etc | host.docker.internal:8080 | Publico (cache+validacion) |
 | GeoServer Admin | `/geoserver/web`, `/geoserver/rest` | host.docker.internal:8080 | VPN-only |
-| MARIACHI | `/mariachi/` | host.docker.internal:TBD | VPN-only |
+| MARIACHI | `/mariachi/` | host.docker.internal:*pendiente* | VPN-only |
 | Grafana | `/huachicol/` | host.docker.internal:3000 | VPN-only |
 
 ---
@@ -152,6 +152,8 @@ huachicol/
 |---|---|---|
 | prometheus | localhost:9090 | service=prometheus |
 | grafana | grafana:3000 | service=grafana |
+
+> **Nota:** El job `grafana` usa `metrics_path: /huachicol/metrics` porque Grafana sirve desde subpath (`SERVE_FROM_SUB_PATH=true`). Los demas exporters usan `/huachicol` directamente via flags de arranque.
 | loki | loki:3100 | service=loki |
 | tempo | tempo:3200 | service=tempo |
 | alertmanager | alertmanager:9093 | service=alertmanager |
@@ -205,10 +207,14 @@ Ver `docs/agregar-proyecto.md` para instrucciones detalladas.
 
 ### Autenticacion (estado actual)
 - **Prometheus y Loki:** Protegidos con basic auth via nginx-auth sidecar (puertos 9091 y 3101)
-- **Grafana:** Auth propia con usuario/password de .env
+- **Grafana:** Auth propia con usuario/password de .env. Sirve desde subpath `/huachicol/` via `GF_SERVER_SERVE_FROM_SUB_PATH=true` (hardcoded en docker-compose).
 - **Exporters del agente:** Endpoint de metricas en `/huachicol` en vez de `/metrics` (node-exporter, cadvisor, postgres-exporter)
 - **MinIO:** Metricas protegidas con JWT (bearer_token_file)
 - **Plan futuro:** Migrar a Authentik (ver `docs/pendientes/authentik.md`)
+
+### MinIO / Acervo (backups)
+- Huachicol usa credenciales de `huachicol-user` (generado por `init-buckets` en Acervo), con policy scoped al bucket `huachicol` unicamente.
+- Las variables `MINIO_BUCKET_USER` y `MINIO_BUCKET_PASSWORD` en el `.env` **no son credenciales de admin**.
 
 ### Gateway
 - TLS 1.2+ con cifrados ECDHE, HSTS 1 ano
@@ -247,7 +253,7 @@ Componentes: `all` (default), `grafana`, `prometheus`, `loki`, `config`.
 
 ```
 # Grafana
-GRAFANA_USER, GRAFANA_PASSWORD, GRAFANA_ROOT_URL, GRAFANA_ALLOW_SIGN_UP, GRAFANA_PLUGINS
+GRAFANA_USER, GRAFANA_PASSWORD, GRAFANA_ROOT_URL (debe incluir subpath, ej: https://dominio/huachicol/), GRAFANA_ALLOW_SIGN_UP, GRAFANA_PLUGINS
 
 # Discord
 DISCORD_WEBHOOK_URL
@@ -264,8 +270,8 @@ MAPALAB_BACKEND_TARGET, GATEWAY_NGINX_TARGET
 DATAENGINE_POSTGRES_TARGET
 ACERVO_MINIO_TARGET, ACERVO_MINIO_TOKEN (JWT)
 
-# MinIO backups
-MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
+# MinIO backups (credenciales de huachicol-user, no admin)
+MINIO_ENDPOINT, MINIO_BUCKET_USER, MINIO_BUCKET_PASSWORD
 
 # Puertos
 GRAFANA_PORT=3000, PROMETHEUS_PORT=9090, ALERTMANAGER_PORT=9002, LOKI_PORT=9003
@@ -293,7 +299,7 @@ TEMPO_OTLP_GRPC_PORT=4317, TEMPO_OTLP_HTTP_PORT=4318, TEMPO_ZIPKIN_PORT=9411, TE
 
 ## Healthchecks
 
-Todos los servicios tienen healthcheck configurado. Grafana depende de Prometheus y Loki (service_healthy). nginx-auth depende de ambos tambien.
+Todos los servicios tienen healthcheck configurado. Grafana depende de Prometheus y Loki (service_healthy). nginx-auth depende de ambos tambien. El healthcheck de Grafana usa `/huachicol/api/health` (por el subpath).
 
 ---
 
@@ -303,14 +309,15 @@ Todos los servicios tienen healthcheck configurado. Grafana depende de Prometheu
 
 | Entorno | Donde corre | Caracteristicas |
 |---|---|---|
-| **dev** | Maquina local del desarrollador | Todos los servicios en el mismo servidor. Para desarrollo y pruebas locales. |
-| **staging** | Servidor local | Todos los servicios en el mismo servidor. Replica de produccion para pruebas pre-release. |
-| **production (GCP)** | Google Cloud Platform | **Cada servicio tiene su propio servidor.** Separacion real por proyecto/rol. |
+| **dev** | Maquina local del desarrollador | Todos los servicios en un mismo servidor. Para desarrollo y pruebas locales. |
+| **staging** | Servidor local (on-prem) | Todos los servicios en un mismo servidor. Replica de produccion para pruebas pre-release. |
+| **staging (GCP)** | Google Cloud Platform | Todos los servicios en un mismo servidor/VM. Mismo esquema que staging local pero en la nube. |
+| **production (GCP)** | Google Cloud Platform | **Cada servicio tiene su propio servidor.** Separacion real por proyecto/rol. Gestionado por administracion. |
 
 ### Implicaciones por entorno
 
-- **dev/staging:** Los targets de Prometheus apuntan a `localhost`, `host.docker.internal` o IPs de la misma red local. El gateway, los backends, el monitoreo y los agentes corren todos en la misma maquina. No se necesitan agentes remotos — el node-exporter y cadvisor del stack central cubren todo.
-- **production (GCP):** Cada proyecto (Portal, MapaLab, Acervo, GeoServer, MARIACHI) corre en su propia VM. Se requiere desplegar el agente remoto (`agent/`) en cada servidor. Los targets de Prometheus usan IPs reales de cada VM. El gateway es el unico punto de entrada publico.
+- **dev / staging / staging GCP:** Todos los servicios corren en la misma maquina. Los targets de Prometheus apuntan a `localhost`, `host.docker.internal` o IPs de la misma red local. No se necesitan agentes remotos — el node-exporter y cadvisor del stack central cubren todo.
+- **production (GCP):** Cada proyecto (Portal, MapaLab, Acervo, GeoServer, MARIACHI) corre en su propia VM. Se requiere desplegar el agente remoto (`agent/`) en cada servidor. Los targets de Prometheus usan IPs reales de cada VM. El gateway es el unico punto de entrada publico. Este entorno es gestionado por el equipo de administracion.
 
 ### Servidores en produccion (GCP)
 
@@ -321,6 +328,7 @@ Todos los servicios tienen healthcheck configurado. Grafana depende de Prometheu
 | **mapalab** | MapaLab + agente de monitoreo | Plataforma de mapas |
 | **mariachi** | MARIACHI + agente de monitoreo | Servicio MARIACHI |
 | **geoserver** | GeoServer + agente de monitoreo | Datos geoespaciales |
+| **acervo** | Acervo (MinIO) + agente de monitoreo | Almacenamiento S3 |
 
 El gateway corre en el mismo servidor que el portal (o en su propia VM segun la configuracion).
 
@@ -347,7 +355,7 @@ make backup                                        # Backup manual a MinIO
 make backup-list                                   # Listar backups disponibles
 make restore DATE=2026-04-03                       # Restaurar todo
 make restore DATE=2026-04-03 COMPONENT=grafana     # Restaurar solo Grafana
-make backup-cron-install / backup-cron-remove       # Cron mensual
+make backup-cron-install / backup-cron-remove       # Cron semanal (domingos, 3AM)
 ```
 
 ---
@@ -370,5 +378,6 @@ make backup-cron-install / backup-cron-remove       # Cron mensual
 - Loki tiene `retention_enabled: true` en el compactor — la retencion de 744h si se aplica.
 - Todas las imagenes Docker estan pinneadas a versiones estables especificas.
 - MinIO expone metricas via JWT auth. El token se genera desde Acervo con `make prometheus-token` y se pone en `ACERVO_MINIO_TOKEN` del `.env` de huachicol. Ver `docs/agregar-proyecto.md`.
+- Los backups usan credenciales de `huachicol-user` (generado por `make init-buckets` en Acervo), con acceso limitado al bucket `huachicol`. El bucket se crea desde Acervo, no desde huachicol.
 - Los exporters del agente (node-exporter, cadvisor, postgres-exporter) sirven en `/huachicol` en vez de `/metrics`. Prometheus los scrapea con `metrics_path: /huachicol`.
 - postgres-exporter se activa con Docker Compose profiles: `docker compose --profile postgres up -d`. Requiere `POSTGRES_DSN` en el `.env` del agente. Se conecta a `dataengine-network` e `iieg-network`.

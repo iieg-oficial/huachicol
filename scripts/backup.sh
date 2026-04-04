@@ -12,8 +12,8 @@ if [ -f "$PROJECT_DIR/$ENV_FILE" ]; then
 fi
 
 MINIO_ENDPOINT="${MINIO_ENDPOINT:?MINIO_ENDPOINT is required}"
-MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}"
-MINIO_SECRET_KEY="${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}"
+MINIO_BUCKET_USER="${MINIO_BUCKET_USER:?MINIO_BUCKET_USER is required}"
+MINIO_BUCKET_PASSWORD="${MINIO_BUCKET_PASSWORD:?MINIO_BUCKET_PASSWORD is required}"
 BUCKET="huachicol"
 RETENTION_DAYS=30
 
@@ -95,8 +95,7 @@ docker run --rm \
     --network iieg-network \
     -v "${ARCHIVE}:/backup/backup-${DATE}.tar.gz:ro" \
     --entrypoint sh minio/mc -c "
-        mc alias set acervo '${MINIO_ENDPOINT}' '${MINIO_ACCESS_KEY}' '${MINIO_SECRET_KEY}' && \
-        mc mb --ignore-existing acervo/${BUCKET} && \
+        mc alias set acervo '${MINIO_ENDPOINT}' '${MINIO_BUCKET_USER}' '${MINIO_BUCKET_PASSWORD}' && \
         mc cp /backup/backup-${DATE}.tar.gz acervo/${BUCKET}/monthly/
     "
 log "Subida OK"
@@ -106,7 +105,7 @@ log "Rotando backups antiguos (retencion: ${RETENTION_DAYS} dias)..."
 docker run --rm \
     --network iieg-network \
     --entrypoint sh minio/mc -c "
-        mc alias set acervo '${MINIO_ENDPOINT}' '${MINIO_ACCESS_KEY}' '${MINIO_SECRET_KEY}' && \
+        mc alias set acervo '${MINIO_ENDPOINT}' '${MINIO_BUCKET_USER}' '${MINIO_BUCKET_PASSWORD}' && \
         mc rm --recursive --force --older-than ${RETENTION_DAYS}d acervo/${BUCKET}/monthly/ 2>/dev/null || true
     "
 

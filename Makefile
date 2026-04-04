@@ -111,7 +111,7 @@ backup:
 backup-list:
 	@echo "Listando backups en MinIO..."
 	@bash -c 'set -a; source .env; set +a; docker run --rm --network iieg-network --entrypoint sh minio/mc -c \
-		"mc alias set acervo $$MINIO_ENDPOINT $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
+		"mc alias set acervo $$MINIO_ENDPOINT $$MINIO_BUCKET_USER $$MINIO_BUCKET_PASSWORD && \
 		 mc ls acervo/huachicol/monthly/"'
 
 restore:

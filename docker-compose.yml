@@ -197,15 +197,13 @@ services:
           cpus: '0.25'
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
     command:
       - '-prometheus_endpoint=/huachicol'
-      - '-docker_only=true'
       - '-store_container_labels=true'
-      - '-containerd=/run/containerd/containerd.sock'
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:

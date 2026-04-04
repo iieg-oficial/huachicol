@@ -197,6 +197,8 @@ services:
     privileged: true
     command:
       - '-prometheus_endpoint=/huachicol'
+      - '-docker_only=true'
+      - '-store_container_labels=true'
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:

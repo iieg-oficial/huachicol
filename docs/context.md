@@ -28,10 +28,10 @@ Stack centralizado de monitoreo y observabilidad. Servicios Docker:
 | Loki | grafana/loki:3.4.2 | Logs centralizados | LOKI_PORT (default 9003) |
 | Tempo | grafana/tempo:2.7.0 | Trazas distribuidas | TEMPO_PORT (default 9004) |
 | Node Exporter | prom/node-exporter:v1.8.2 | Metricas hardware | NODE_EXPORTER_PORT (default 9010) |
-| cAdvisor | gcr.io/cadvisor/cadvisor:v0.51.0 | Metricas contenedores | CADVISOR_PORT (default 9011) |
+| cAdvisor | gcr.io/cadvisor/cadvisor:v0.55.1 | Metricas contenedores | CADVISOR_PORT (default 9011) |
 | nginx-auth | nginx:1.28-alpine | Basic auth para Prometheus/Loki | PROMETHEUS_AUTH_PORT/LOKI_AUTH_PORT (default 9091/3101) |
 
-Agente remoto (`agent/`, nombre: `huachicol-agent`): node-exporter (v1.8.2) + cadvisor (v0.51.0) + promtail (3.4.2) + postgres-exporter (v0.17.1, perfil opcional). Todos los exporters del agente sirven metricas en `/huachicol` en vez de `/metrics`.
+Agente remoto (`agent/`, nombre: `huachicol-agent`): node-exporter (v1.8.2) + cadvisor (v0.55.1) + promtail (3.4.2) + postgres-exporter (v0.17.1). Todos los servicios usan Docker Compose profiles (`all`, `node`, `cadvisor`, `promtail`, `postgres`) para despliegue selectivo. Containers nombrados con prefijo `huachicol-` para evitar conflictos. Todos los exporters sirven metricas en `/huachicol` en vez de `/metrics`.
 
 ### Gateway-Hub (`/home/egar/IIEG/gateway-hub`)
 
@@ -105,7 +105,7 @@ huachicol/
 │   ├── nginx.conf                  # Proxy auth para Prometheus(:9091) y Loki(:3101)
 │   └── entrypoint.sh              # Genera htpasswd desde env vars
 ├── agent/
-│   ├── docker-compose.yml          # huachicol-agent: node-exporter, cadvisor, promtail, postgres-exporter (perfil)
+│   ├── docker-compose.yml          # huachicol-agent: node-exporter, cadvisor, promtail, postgres-exporter (todos con profiles)
 │   ├── .env.example                # SERVER_NAME, LOKI_URL, puertos, POSTGRES_DSN
 │   └── promtail-config.yml         # backoff_config, batchwait, positions persistentes
 ├── scripts/
@@ -118,6 +118,7 @@ huachicol/
 │   └── backup-cron                 # Cron: domingos 3AM
 ├── docs/
 │   ├── agregar-proyecto.md         # Como agregar proyectos/targets al monitoreo + MinIO JWT
+│   ├── configuracion-env.md       # Guia para obtener cada variable del .env (orientada a GCP)
 │   ├── onboarding-agente.md        # Guia para desplegar agente en servidor nuevo
 │   └── pendientes/
 │       ├── authentik.md            # Plan futuro: reemplazar basic auth con Authentik IdP
@@ -347,8 +348,11 @@ make start / stop / restart / logs / status / clean
 # Targets (regenerar despues de cambiar IPs o targets en .env)
 make targets
 
-# Agente remoto (huachicol-agent)
-make agent-start / agent-stop / agent-restart / agent-logs / agent-status / agent-clean
+# Agente remoto (huachicol-agent) — todos los servicios usan profiles
+make agent-start                                   # Todos los servicios (profile: all)
+make agent-start PROFILES="node cadvisor"          # Solo servicios especificos
+make agent-start PROFILES="node cadvisor postgres"  # Incluir postgres-exporter
+make agent-stop / agent-restart / agent-logs / agent-status / agent-clean
 
 # Backups y restore
 make backup                                        # Backup manual a MinIO
@@ -376,8 +380,11 @@ make backup-cron-install / backup-cron-remove       # Cron semanal (domingos, 3A
 - Tempo genera metricas (service-graphs, span-metrics) y las envia a Prometheus via remote write.
 - Promtail del agente tiene `backoff_config` y positions persistentes en volumen nombrado.
 - Loki tiene `retention_enabled: true` en el compactor — la retencion de 744h si se aplica.
-- Todas las imagenes Docker estan pinneadas a versiones estables especificas.
+- Todas las imagenes Docker estan pinneadas a versiones estables especificas. cAdvisor requiere v0.55.1+ para compatibilidad con Docker 29 + storage driver `overlayfs` + cgroups v2.
 - MinIO expone metricas via JWT auth. El token se genera desde Acervo con `make prometheus-token` y se pone en `ACERVO_MINIO_TOKEN` del `.env` de huachicol. Ver `docs/agregar-proyecto.md`.
 - Los backups usan credenciales de `huachicol-user` (generado por `make init-buckets` en Acervo), con acceso limitado al bucket `huachicol`. El bucket se crea desde Acervo, no desde huachicol.
 - Los exporters del agente (node-exporter, cadvisor, postgres-exporter) sirven en `/huachicol` en vez de `/metrics`. Prometheus los scrapea con `metrics_path: /huachicol`.
-- postgres-exporter se activa con Docker Compose profiles: `docker compose --profile postgres up -d`. Requiere `POSTGRES_DSN` en el `.env` del agente. Se conecta a `dataengine-network` e `iieg-network`.
+- Todos los servicios del agente usan Docker Compose profiles: `all` (node-exporter + cadvisor + promtail), `node`, `cadvisor`, `promtail`, `postgres`. Esto permite despliegue selectivo — por ejemplo, en servidores donde gateway ya tiene promtail, se usa `PROFILES="node cadvisor"` para evitar duplicados.
+- Los containers del agente usan prefijo `huachicol-` (ej: `huachicol-node-exporter`, `huachicol-promtail`) para evitar conflictos de nombre con otros proyectos en el mismo servidor.
+- postgres-exporter requiere `POSTGRES_DSN` en el `.env` del agente. Se conecta a `dataengine-network` e `iieg-network`.
+- cAdvisor usa `-store_container_labels=true` para exportar labels de Docker (name, image, compose project). El volumen `/var/run` se monta read-write para acceso al socket de Docker.

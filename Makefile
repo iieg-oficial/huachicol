@@ -79,8 +79,8 @@ clean:
 
 # --- Agente ---
 
-AGENT_PROFILES ?= all
-AGENT_PROFILE_FLAGS := $(foreach p,$(PROFILES) $(AGENT_PROFILES),--profile $(p))
+PROFILES ?= all
+AGENT_PROFILE_FLAGS := $(foreach p,$(PROFILES),--profile $(p))
 AGENT_CMD := docker compose -f $(AGENT_DIR)/docker-compose.yml $(AGENT_PROFILE_FLAGS)
 
 agent-start: network

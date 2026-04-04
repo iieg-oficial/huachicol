@@ -10,3 +10,23 @@ providers:
     allowUiUpdates: true
     options:
       path: /var/lib/grafana/dashboards
+
+  - name: 'projects'
+    orgId: 1
+    folder: 'Projects'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/projects
+
+  - name: 'infrastructure'
+    orgId: 1
+    folder: 'Infrastructure'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/infrastructure

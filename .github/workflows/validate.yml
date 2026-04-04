@@ -1,0 +1,76 @@
+name: Validate Configuration
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate-yaml:
+    name: Validate YAML Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint Prometheus config
+        run: yamllint -d relaxed prometheus/prometheus.yml
+
+      - name: Lint Alertmanager template
+        run: yamllint -d relaxed alertmanager/alertmanager.yml.template
+
+      - name: Lint Loki config
+        run: yamllint -d relaxed loki/loki-config.yml
+
+      - name: Lint Tempo config
+        run: yamllint -d relaxed tempo/tempo-config.yml
+
+      - name: Lint Alert rules
+        run: yamllint -d relaxed prometheus/rules/alerts.yml
+
+  validate-compose:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create dummy .env for validation
+        run: |
+          cat .env.example | sed 's/^[A-Z_]*=$/&placeholder/' > .env
+
+      - name: Validate main compose
+        run: docker compose config --quiet
+
+      - name: Validate agent compose
+        run: |
+          cp agent/.env.example agent/.env
+          sed -i 's/^[A-Z_]*=$/&placeholder/' agent/.env
+          docker compose -f agent/docker-compose.yml config --quiet
+
+  validate-prometheus:
+    name: Validate Prometheus Rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download promtool
+        run: |
+          wget -q https://github.com/prometheus/prometheus/releases/download/v3.11.0/prometheus-3.11.0.linux-amd64.tar.gz
+          tar xzf prometheus-3.11.0.linux-amd64.tar.gz
+          sudo mv prometheus-3.11.0.linux-amd64/promtool /usr/local/bin/
+
+      - name: Check alert rules
+        run: promtool check rules prometheus/rules/alerts.yml
+
+  # CD: preparado para agregar deploy cuando se configure
+  # deploy:
+  #   name: Deploy to server
+  #   needs: [validate-yaml, validate-compose, validate-prometheus]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - name: SSH deploy
+  #       run: echo "TODO: configurar SSH deploy"

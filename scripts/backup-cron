@@ -1,0 +1,2 @@
+# Backup semanal del stack de monitoreo (domingos a las 3:00 AM)
+0 3 * * 0 cd /home/egar/IIEG/huachicol && ./scripts/backup.sh >> /var/log/huachicol-backup.log 2>&1

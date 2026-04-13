@@ -91,15 +91,6 @@ groups:
           summary: "Loki is down"
           description: "Loki log aggregation service is unreachable"
 
-      - alert: TempoDown
-        expr: up{job="tempo"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Tempo is down"
-          description: "Tempo tracing service is unreachable"
-
       - alert: GrafanaDown
         expr: up{job="grafana"} == 0
         for: 1m

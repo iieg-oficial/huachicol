@@ -1,16 +1,17 @@
 # Contexto Completo del Ecosistema IIEG: Huachicol + Gateway-Hub
 
-> Referencia completa para que cualquier sesion de Claude Code entienda el ecosistema sin re-analizar archivos.
-> Ultima actualizacion: 2026-04-04
+> Referencia completa del ecosistema para onboarding y consulta rapida.
+> Ultima actualizacion: 2026-04-13
 
 ---
 
 ## Quien lo usa
 
 - **Organizacion:** IIEG (Instituto de Informacion Estadistica y Geografica de Jalisco) — organismo publico del gobierno de Jalisco, Mexico.
-- **Equipo:** Desarrollo de software del IIEG, liderado por Edgar Villarreal.
+- **Equipo:** Desarrollo de software del IIEG, liderado por Edgar Villarreal. Cuenta con credenciales de acceso a los servidores GCP y al equipo de administracion.
 - **Usuarios del monitoreo:** Equipo de desarrollo y operaciones.
 - **Usuarios finales:** Ciudadanos y funcionarios que acceden a los portales publicos.
+- **Repositorios:** Todos los proyectos estan versionados en GitHub.
 
 ---
 
@@ -26,7 +27,6 @@ Stack centralizado de monitoreo y observabilidad. Servicios Docker:
 | Grafana | grafana/grafana:12.0.1 | Dashboards | GRAFANA_PORT (default 3000). Sirve desde subpath `/huachicol/` (`GF_SERVER_SERVE_FROM_SUB_PATH=true`, hardcoded en docker-compose). |
 | Alertmanager | prom/alertmanager:v0.28.1 | Alertas a Discord | ALERTMANAGER_PORT (default 9002) |
 | Loki | grafana/loki:3.4.2 | Logs centralizados | LOKI_PORT (default 9003) |
-| Tempo | grafana/tempo:2.7.0 | Trazas distribuidas | TEMPO_PORT (default 9004) |
 | Node Exporter | prom/node-exporter:v1.8.2 | Metricas hardware | NODE_EXPORTER_PORT (default 9010) |
 | cAdvisor | gcr.io/cadvisor/cadvisor:v0.55.1 | Metricas contenedores | CADVISOR_PORT (default 9011) |
 | nginx-auth | nginx:1.28-alpine | Basic auth para Prometheus/Loki | PROMETHEUS_AUTH_PORT/LOKI_AUTH_PORT (default 9091/3101) |
@@ -65,8 +65,7 @@ Almacenamiento S3 basado en MinIO. Buckets: mapalab, dateengine, portal, huachic
     │  Prometheus ──scrape──> node-exporter, cadvisor, nginx    │
     │  Alertmanager ──webhook──> Discord (3 canales)            │
     │  Loki <──promtail── logs Docker                           │
-    │  Tempo <──OTLP/Jaeger── trazas de backends                │
-    │  Grafana (visualiza Prometheus + Loki + Tempo)            │
+    │  Grafana (visualiza Prometheus + Loki)                    │
     │  nginx-auth (basic auth para Prometheus y Loki externos)  │
     └──────────────────────────────────────────────────────────┘
 ```
@@ -91,7 +90,7 @@ huachicol/
 │       └── minio-token                  # JWT para scraping MinIO (generado)
 ├── grafana/
 │   ├── provisioning/
-│   │   ├── datasources/datasources.yml  # Prometheus (default), Loki, Tempo
+│   │   ├── datasources/datasources.yml  # Prometheus (default), Loki
 │   │   └── dashboards/dashboards.yml    # 3 providers: default, projects, infrastructure
 │   └── dashboards/
 │       ├── home.json               # Dashboard "IIEG - Vista General" (25 paneles, 5 secciones)
@@ -100,7 +99,6 @@ huachicol/
 ├── alertmanager/
 │   └── alertmanager.yml.template   # Template — webhook se inyecta desde .env via sed
 ├── loki/loki-config.yml            # retention_enabled: true, 744h, TSDB
-├── tempo/tempo-config.yml          # 168h retention, OTLP+Jaeger+Zipkin, metrics_generator → Prometheus
 ├── nginx-auth/
 │   ├── nginx.conf                  # Proxy auth para Prometheus(:9091) y Loki(:3101)
 │   └── entrypoint.sh              # Genera htpasswd desde env vars
@@ -156,7 +154,6 @@ huachicol/
 
 > **Nota:** El job `grafana` usa `metrics_path: /huachicol/metrics` porque Grafana sirve desde subpath (`SERVE_FROM_SUB_PATH=true`). Los demas exporters usan `/huachicol` directamente via flags de arranque.
 | loki | loki:3100 | service=loki |
-| tempo | tempo:3200 | service=tempo |
 | alertmanager | alertmanager:9093 | service=alertmanager |
 
 ### Jobs dinamicos (file_sd_configs, generados por `make targets`)
@@ -190,7 +187,6 @@ Ver `docs/agregar-proyecto.md` para instrucciones detalladas.
 
 ### monitoring_stack_alerts
 - **LokiDown** (critical, 1m)
-- **TempoDown** (critical, 1m)
 - **GrafanaDown** (critical, 1m)
 - **AlertmanagerDown** (critical, 1m)
 - **PrometheusStorageHigh** (warning, 10m): TSDB > 30% disco
@@ -231,7 +227,6 @@ Ver `docs/agregar-proyecto.md` para instrucciones detalladas.
 |---|---|
 | Prometheus | 30 dias |
 | Loki | 744 horas (30 dias), compactor con retention_enabled: true |
-| Tempo | 168 horas (7 dias) |
 | Backups | 30 dias en MinIO (bucket: huachicol), semanal |
 
 ### Backup (`make backup`)
@@ -276,9 +271,8 @@ MINIO_ENDPOINT, MINIO_BUCKET_USER, MINIO_BUCKET_PASSWORD
 
 # Puertos
 GRAFANA_PORT=3000, PROMETHEUS_PORT=9090, ALERTMANAGER_PORT=9002, LOKI_PORT=9003
-TEMPO_PORT=9004, NODE_EXPORTER_PORT=9010, CADVISOR_PORT=9011
+NODE_EXPORTER_PORT=9010, CADVISOR_PORT=9011
 PROMETHEUS_AUTH_PORT=9091, LOKI_AUTH_PORT=3101
-TEMPO_OTLP_GRPC_PORT=4317, TEMPO_OTLP_HTTP_PORT=4318, TEMPO_ZIPKIN_PORT=9411, TEMPO_JAEGER_PORT=14268
 ```
 
 ---
@@ -291,7 +285,6 @@ TEMPO_OTLP_GRPC_PORT=4317, TEMPO_OTLP_HTTP_PORT=4318, TEMPO_ZIPKIN_PORT=9411, TE
 | Grafana | 512M | 0.5 |
 | Alertmanager | 256M | 0.25 |
 | Loki | 1G | 1.0 |
-| Tempo | 512M | 0.5 |
 | Node Exporter | 128M | 0.25 |
 | cAdvisor | 256M | 0.5 |
 | nginx-auth | 128M | 0.25 |
@@ -318,7 +311,7 @@ Todos los servicios tienen healthcheck configurado. Grafana depende de Prometheu
 ### Implicaciones por entorno
 
 - **dev / staging / staging GCP:** Todos los servicios corren en la misma maquina. Los targets de Prometheus apuntan a `localhost`, `host.docker.internal` o IPs de la misma red local. No se necesitan agentes remotos — el node-exporter y cadvisor del stack central cubren todo.
-- **production (GCP):** Cada proyecto (Portal, MapaLab, Acervo, GeoServer, MARIACHI) corre en su propia VM. Se requiere desplegar el agente remoto (`agent/`) en cada servidor. Los targets de Prometheus usan IPs reales de cada VM. El gateway es el unico punto de entrada publico. Este entorno es gestionado por el equipo de administracion.
+- **production (GCP):** Cada proyecto (Portal, MapaLab, Acervo, GeoServer, MARIACHI) corre en su propia VM. Se requiere desplegar el agente remoto (`agent/`) en cada servidor. Los targets de Prometheus usan IPs reales de cada VM. El gateway es el unico punto de entrada publico. Este entorno es gestionado por el equipo de administracion. **Firewall:** GCP no tiene los puertos abiertos por defecto — la apertura de puertos se debe solicitar al equipo de administracion.
 
 ### Servidores en produccion (GCP)
 
@@ -377,7 +370,6 @@ make backup-cron-install / backup-cron-remove       # Cron semanal (domingos, 3A
 - El webhook de Discord se inyecta en alertmanager via `sed` en el entrypoint (template en `alertmanager.yml.template`).
 - nginx-auth genera el `.htpasswd` en el entrypoint desde env vars `MONITORING_AUTH_USER`/`MONITORING_AUTH_PASSWORD`.
 - Prometheus tiene `--web.enable-lifecycle`, `--web.enable-remote-write-receiver` y `--web.enable-admin-api` (para snapshots de backup) habilitados.
-- Tempo genera metricas (service-graphs, span-metrics) y las envia a Prometheus via remote write.
 - Promtail del agente tiene `backoff_config` y positions persistentes en volumen nombrado.
 - Loki tiene `retention_enabled: true` en el compactor — la retencion de 744h si se aplica.
 - Todas las imagenes Docker estan pinneadas a versiones estables especificas. cAdvisor requiere v0.55.1+ para compatibilidad con Docker 29 + storage driver `overlayfs` + cgroups v2.

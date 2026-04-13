@@ -25,9 +25,6 @@ jobs:
       - name: Lint Loki config
         run: yamllint -d relaxed loki/loki-config.yml
 
-      - name: Lint Tempo config
-        run: yamllint -d relaxed tempo/tempo-config.yml
-
       - name: Lint Alert rules
         run: yamllint -d relaxed prometheus/rules/alerts.yml
 

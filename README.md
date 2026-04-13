@@ -8,7 +8,6 @@ Servidor centralizado de monitoreo y observabilidad para todos los proyectos del
 - **Grafana** — Dashboards
 - **AlertManager** — Alertas a Discord
 - **Loki** — Logs centralizados
-- **Tempo** — Distributed tracing
 - **Node Exporter** — Metricas del servidor
 - **cAdvisor** — Metricas de contenedores
 
@@ -30,7 +29,6 @@ make start
 | AlertManager | 9002 | http://localhost:9002 |
 | Loki | 9003 | http://localhost:9003 |
 | Loki (auth) | 3101 | http://localhost:3101 |
-| Tempo | 9004 | http://localhost:9004 |
 | Node Exporter | 9010 | http://localhost:9010 |
 | cAdvisor | 9011 | http://localhost:9011 |
 
@@ -112,5 +110,4 @@ logger.add(new LokiTransport({
 |----------|-----------|
 | Prometheus | 30 dias |
 | Loki | 30 dias |
-| Tempo | 7 dias |
 | Backups | 3 meses |

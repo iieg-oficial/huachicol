@@ -193,7 +193,7 @@
         "textMode": "auto"
       },
       "targets": [
-        { "expr": "up{job=~\"prometheus|grafana|loki|tempo|alertmanager\"}", "legendFormat": "{{ job }}", "refId": "A" }
+        { "expr": "up{job=~\"prometheus|grafana|loki|alertmanager\"}", "legendFormat": "{{ job }}", "refId": "A" }
       ]
     },
     {

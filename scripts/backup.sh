@@ -78,7 +78,6 @@ tar czf "${BACKUP_DIR}/config.tar.gz" \
     prometheus/rules \
     alertmanager \
     loki \
-    tempo \
     grafana/provisioning \
     grafana/dashboards \
     .env.example

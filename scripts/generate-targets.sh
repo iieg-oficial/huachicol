@@ -33,10 +33,12 @@ FIRST=false
     MAPALAB_IP="${MAPALAB_SERVER_IP:-}"
     MARIACHI_IP="${MARIACHI_SERVER_IP:-}"
     GEOSERVER_IP="${GEOSERVER_SERVER_IP:-}"
+    DATAENGINE_IP="${DATAENGINE_SERVER_IP:-}"
     add_target "${PORTAL_IP:+${PORTAL_IP}:9100}" "server" "portal"
     add_target "${MAPALAB_IP:+${MAPALAB_IP}:9100}" "server" "mapalab"
     add_target "${MARIACHI_IP:+${MARIACHI_IP}:9100}" "server" "mariachi"
     add_target "${GEOSERVER_IP:+${GEOSERVER_IP}:9100}" "server" "geoserver"
+    add_target "${DATAENGINE_IP:+${DATAENGINE_IP}:9100}" "server" "dataengine"
     printf '\n]\n'
 } > "${TARGETS_DIR}/node-exporter.json"
 echo "Generated node-exporter.json"
@@ -49,6 +51,7 @@ FIRST=false
     add_target "${MAPALAB_IP:+${MAPALAB_IP}:8080}" "server" "mapalab"
     add_target "${MARIACHI_IP:+${MARIACHI_IP}:8080}" "server" "mariachi"
     add_target "${GEOSERVER_IP:+${GEOSERVER_IP}:8080}" "server" "geoserver"
+    add_target "${DATAENGINE_IP:+${DATAENGINE_IP}:8080}" "server" "dataengine"
     printf '\n]\n'
 } > "${TARGETS_DIR}/cadvisor.json"
 echo "Generated cadvisor.json"

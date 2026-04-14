@@ -2,14 +2,18 @@
 
 Estas mejoras aplican al proyecto `/home/egar/IIEG/gateway-hub`, no a huachicol.
 
-## 1. Rate limiting diferenciado
-El gateway usa 3 rate limiters identicos (10 req/s, burst 20). Recomendacion:
-- **General (/):** 20 req/s, burst 40 — trafico web normal
-- **API (/api/):** 30 req/s, burst 50 — clientes programaticos necesitan mas
-- **GeoServer OWS/WFS/WCS:** 5 req/s, burst 10 — queries pesadas a la DB, proteger recursos
-- **GeoServer descargas:** 2 req/s, burst 5 — archivos grandes
+## 1. Rate limiting diferenciado — IMPLEMENTADO (2026-04-14)
+El gateway ahora usa 4 zonas diferenciadas:
+- **General (/):** 10 req/s, burst 20 — trafico web general
+- **API (/api/):** 10 req/s, burst 20 — endpoints de API
+- **Static (/mapalab/assets/):** 50 req/s, burst 200 — assets de SPA con cache gateway
+- **MapaLab (/):** 10 req/s, burst 150 — navegacion SPA
+- **GeoServer OWS/WFS/WCS:** 10 req/s, burst 10 — servicios OGC con cache
+- Respuesta al exceso: HTTP 429 con pagina amigable (countdown 10s)
+- Cache de assets MapaLab en gateway (500MB, 7 dias, stale serving)
+- Stress test validado: 100 usuarios simultaneos, 0% errores, p95 92ms
 
-Archivo a modificar: `nginx/nginx.conf` (limit_req_zone) y `nginx/templates/gateway.conf.template` (limit_req por location).
+Ver `gateway-hub/docs/rendimiento.md` para configuracion completa y resultados.
 
 ## 2. Log rotation para NGINX
 Los logs de NGINX van a un volumen Docker sin rotacion. Opciones:

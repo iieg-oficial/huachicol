@@ -36,7 +36,7 @@ Agente remoto (`agent/`, nombre: `huachicol-agent`): node-exporter (v1.8.2) + ca
 ### Gateway-Hub (`/home/egar/IIEG/gateway-hub`)
 
 Reverse proxy NGINX — punto de entrada unico para todos los servicios publicos.
-- SSL/TLS (TLS 1.2+), HSTS, rate limiting, cache GeoServer (2GB/6h)
+- SSL/TLS (TLS 1.2+), HSTS, rate limiting por zonas (general/api/static/geoserver), cache GeoServer (2GB/6h) + cache MapaLab assets (500MB/7d)
 - Control de acceso VPN para rutas admin
 - Exporta metricas NGINX a Prometheus y logs a Loki
 - Imagen custom: nginx:1.28.2-alpine + envsubst

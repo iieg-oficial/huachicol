@@ -29,6 +29,7 @@ services:
     command:
       - '-prometheus_endpoint=/huachicol'
       - '-store_container_labels=true'
+      - '-housekeeping_interval=30s'
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:
@@ -39,6 +40,11 @@ services:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     ports:
       - "${CADVISOR_PORT:-8080}:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
     profiles:
       - all
       - cadvisor

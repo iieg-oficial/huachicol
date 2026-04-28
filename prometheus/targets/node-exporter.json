@@ -2,5 +2,9 @@
   {
     "targets": ["node-exporter:9100"],
     "labels": { "server": "monitoring" }
+  },
+  {
+    "targets": ["10.13.201.117:9100"],
+    "labels": { "server": "dataengine" }
   }
 ]

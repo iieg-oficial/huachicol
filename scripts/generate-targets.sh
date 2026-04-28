@@ -63,6 +63,7 @@ FIRST=true
     add_target "${URLSCHIQUITAS_BACKEND_TARGET:-}" "project" "urlschiquitas" ', "service": "backend"'
     add_target "${URLSCHIQUITAS_POSTGRES_TARGET:-}" "project" "urlschiquitas" ', "service": "postgres"'
     add_target "${MAPALAB_BACKEND_TARGET:-}" "project" "mapalab" ', "service": "backend"'
+    add_target "${MARIACHI_BACKEND_TARGET:-}" "project" "mariachi" ', "service": "backend"'
     add_target "${GATEWAY_NGINX_TARGET:-}" "project" "gateway-hub" ', "service": "nginx"'
     printf '\n]\n'
 } > "${TARGETS_DIR}/projects.json"

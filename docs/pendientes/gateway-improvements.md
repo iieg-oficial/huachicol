@@ -23,7 +23,8 @@ Los logs de NGINX van a un volumen Docker sin rotacion. Opciones:
 
 Archivo a modificar: `docker-compose.yml` del gateway-hub.
 
-## 3. Promtail deprecado
-Promtail esta en EOL (marzo 2026). Grafana recomienda migrar a Grafana Alloy.
-Aplica tanto al gateway como a los agentes de huachicol.
-Evaluar migracion cuando se haga un upgrade mayor del stack.
+## 3. Promtail deprecado — migracion a Grafana Alloy
+Promtail entro en EOL en marzo 2026. La migracion a Grafana Alloy aplica tanto al gateway como a los agentes de huachicol.
+
+- **Huachicol (agentes):** plan detallado en `docs/pendientes/alloy-migration.md` (fases 2 y 3 documentadas; fase 1 en ejecucion / changelog).
+- **Gateway-hub:** pendiente migrar el Promtail del gateway de forma equivalente. Verificar version estable mas reciente de Alloy antes de planear (al 2026-05-11: `v1.16.1`).

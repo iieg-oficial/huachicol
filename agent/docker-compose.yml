@@ -1,25 +1,32 @@
 name: huachicol-agent
 
 services:
-  node-exporter:
-    image: prom/node-exporter:v1.8.2
-    container_name: huachicol-node-exporter
+  alloy:
+    image: grafana/alloy:v1.16.1
+    container_name: huachicol-alloy
     restart: unless-stopped
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-      - '--web.telemetry-path=/huachicol'
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      LOKI_URL: ${LOKI_URL}
+      SERVER_NAME: ${SERVER_NAME}
     volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     ports:
-      - "${NODE_EXPORTER_PORT:-9100}:9100"
+      - "${ALLOY_PORT:-12345}:12345"
     profiles:
       - all
-      - node
+      - telemetry
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.55.1
@@ -49,23 +56,6 @@ services:
       - all
       - cadvisor
 
-  promtail:
-    image: grafana/promtail:3.4.2
-    container_name: huachicol-promtail
-    restart: unless-stopped
-    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
-    environment:
-      LOKI_URL: ${LOKI_URL}
-      SERVER_NAME: ${SERVER_NAME}
-    volumes:
-      - ./promtail-config.yml:/etc/promtail/config.yml
-      - promtail_positions:/data
-      - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    profiles:
-      - all
-      - promtail
-
   postgres-exporter:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
     container_name: huachicol-postgres-exporter
@@ -92,4 +82,4 @@ networks:
     name: dataengine-network
 
 volumes:
-  promtail_positions:
+  alloy_data:

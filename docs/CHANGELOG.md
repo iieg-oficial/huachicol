@@ -14,6 +14,24 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.17.0] - 2026-05-11
+
+### Cambiado
+- **Agente remoto: Promtail y node-exporter reemplazados por Grafana Alloy v1.16.1**. Motivacion: Promtail entro en EOL en marzo 2026 (auditoria externa lo marca como deuda tecnica). Se aprovecha la migracion para consolidar node-exporter en el mismo binario.
+  - Nuevo archivo `agent/config.alloy` con: `loki.source.docker` (logs de containers via socket Docker), `loki.source.file` (syslog), `loki.write` (push a Loki central), y `prometheus.exporter.unix` (metricas host).
+  - `agent/docker-compose.yml`: services `promtail` y `node-exporter` reemplazados por `alloy`. Imagen `grafana/alloy:v1.16.1`. Volumen `promtail_positions` reemplazado por `alloy_data`.
+  - Profiles del agente reorganizados: `all` (alloy + cadvisor), `telemetry` (solo alloy), `cadvisor`, `postgres`. Profiles previos `node` y `promtail` removidos.
+  - `prometheus.yml` sin cambios estructurales: el job `node-exporter` mantiene path `/huachicol` para el server `monitoring` (sigue usando node-exporter standalone en el stack central), y cada target remoto override su path con `__metrics_path__: /api/v0/component/prometheus.exporter.unix.host/metrics` en `node-exporter.json` (generado por `scripts/generate-targets.sh`).
+  - `scripts/generate-targets.sh`: targets remotos de node-exporter ahora apuntan a `:12345` con `__metrics_path__` por target.
+  - `agent/.env.example`: `NODE_EXPORTER_PORT` removido, `ALLOY_PORT` agregado (default 12345).
+  - Documentacion actualizada: `docs/context.md`, `docs/onboarding-agente.md`, `docs/pendientes/alloy-migration.md`, `docs/pendientes/gateway-improvements.md`.
+
+### Pendiente (fases posteriores documentadas en `docs/pendientes/alloy-migration.md`)
+- Fase 2: consolidar cAdvisor y postgres-exporter en Alloy (queda 1 solo servicio en el agente).
+- Fase 3: migrar a modelo push con `prometheus.remote_write` para resolver dependencia de firewall GCP.
+
+---
+
 ## [1.16.1] - 2026-04-28
 
 ### Corregido

@@ -100,6 +100,8 @@ services:
     restart: unless-stopped
     environment:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+    networks:
+      - monitoring
     healthcheck:
       test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 9094), timeout=3).close()"]
       interval: 30s

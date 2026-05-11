@@ -26,6 +26,12 @@ salio a production con el commit inicial del stack de monitoreo.
   - `agent/.env.example`: `NODE_EXPORTER_PORT` removido, `ALLOY_PORT` agregado (default 12345).
   - Documentacion actualizada: `docs/context.md`, `docs/onboarding-agente.md`, `docs/pendientes/alloy-migration.md`, `docs/pendientes/gateway-improvements.md`.
 
+### Corregido
+- **`alertmanager-discord` quedaba aislado en la red `huachicol_default`** (sin bloque `networks` en `docker-compose.yml`) mientras el resto del stack vive en `huachicol_monitoring`. `alertmanager` no podia resolver `alertmanager-discord` por DNS (`NXDOMAIN`), las alertas reintentaban 7-8 veces y se dropeaban silenciosamente. Bug detectado por el dashboard nuevo de containers al ver los errores de `dispatch.go` en logs de `alertmanager`. Fix: agregar `networks: [monitoring]` al service.
+
+### Agregado
+- **Dashboard `Contenedores - Vista Detallada`** (`grafana/dashboards/infrastructure/containers.json`): vista unificada con stats de resumen, inventario de containers (tabla con CPU+memoria desde cAdvisor y rate de logs desde Loki), timeseries de CPU/memoria/red por container, volumen de logs por container, y panel de logs en vivo filtrable. Variable `$container` multi-select.
+
 ### Pendiente (fases posteriores documentadas en `docs/pendientes/alloy-migration.md`)
 - Fase 2: consolidar cAdvisor y postgres-exporter en Alloy (queda 1 solo servicio en el agente).
 - Fase 3: migrar a modelo push con `prometheus.remote_write` para resolver dependencia de firewall GCP.

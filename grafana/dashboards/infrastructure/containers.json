@@ -455,7 +455,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"$container\"}[5m]))",
+          "expr": "topk(20, sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"$container\"}[5m])))",
           "refId": "A",
           "legendFormat": "{{ name }}"
         }
@@ -505,7 +505,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (name) (container_memory_usage_bytes{name=~\"$container\"})",
+          "expr": "topk(20, sum by (name) (container_memory_usage_bytes{name=~\"$container\"}))",
           "refId": "A",
           "legendFormat": "{{ name }}"
         }
@@ -550,7 +550,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (name) (rate(container_network_receive_bytes_total{name=~\"$container\"}[5m]))",
+          "expr": "topk(20, sum by (name) (rate(container_network_receive_bytes_total{name=~\"$container\"}[5m])))",
           "refId": "A",
           "legendFormat": "{{ name }}"
         }
@@ -595,7 +595,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (name) (rate(container_network_transmit_bytes_total{name=~\"$container\"}[5m]))",
+          "expr": "topk(20, sum by (name) (rate(container_network_transmit_bytes_total{name=~\"$container\"}[5m])))",
           "refId": "A",
           "legendFormat": "{{ name }}"
         }
@@ -640,7 +640,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (container_name) (rate({job=\"docker\", container_name=~\"$container\"}[1m]))",
+          "expr": "topk(20, sum by (container_name) (rate({job=\"docker\", container_name=~\"$container\"}[1m])))",
           "refId": "A",
           "legendFormat": "{{ container_name }}"
         }
@@ -678,17 +678,19 @@
         "wrapLogMessage": true,
         "prettifyLogMessage": false,
         "enableLogDetails": true,
-        "sortOrder": "Descending"
+        "sortOrder": "Descending",
+        "dedupStrategy": "numbers"
       },
       "targets": [
         {
           "expr": "{job=\"docker\", container_name=~\"$container\"}",
-          "refId": "A"
+          "refId": "A",
+          "maxLines": 100
         }
       ]
     }
   ],
-  "refresh": "30s",
+  "refresh": "1m",
   "schemaVersion": 39,
   "tags": [
     "iieg",
@@ -752,7 +754,8 @@
           ],
           "value": [
             "$__all"
-          ]
+          ],
+          "isNone": false
         },
         "multi": true,
         "includeAll": true,
@@ -764,7 +767,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},

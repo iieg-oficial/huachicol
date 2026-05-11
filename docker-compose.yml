@@ -49,6 +49,10 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS}
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_FEATURE_TOGGLES_DISABLE: "preinstallAutoUpdate,dashgpt"
+      GF_PLUGINS_DISABLE_PLUGINS: "grafana-exploretraces-app,grafana-lokiexplore-app,grafana-metricsdrilldown-app,grafana-pyroscope-app"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/general/home.json"
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml

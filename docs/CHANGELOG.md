@@ -31,6 +31,10 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ### Agregado
 - **Dashboard `Contenedores - Vista Detallada`** (`grafana/dashboards/infrastructure/containers.json`): vista unificada con stats de resumen, inventario de containers (tabla con CPU+memoria desde cAdvisor y rate de logs desde Loki), timeseries de CPU/memoria/red por container, volumen de logs por container, y panel de logs en vivo filtrable. Variable `$container` multi-select.
+- **Env vars de Grafana para reducir carga inicial** (`docker-compose.yml`): `GF_PLUGINS_DISABLE_PLUGINS` para los 4 plugins de drilldown que Grafana 12 precarga (`grafana-exploretraces-app`, `grafana-lokiexplore-app`, `grafana-metricsdrilldown-app`, `grafana-pyroscope-app`), `GF_FEATURE_TOGGLES_DISABLE=preinstallAutoUpdate,dashgpt`, y `GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH` apuntando al `general/home.json`. Reduce ~10 requests innecesarias al cargar la UI. El problema raiz (rate limit del gateway) queda documentado en `docs/pendientes/gateway-improvements.md` punto 3.
+
+### Cambiado
+- **Provisioning de dashboards reorganizado**: provider `default` renombrado a `general` y apuntando a `dashboards/general/` (donde se movieron `home.json` y `gateway-subroutes.json`). Antes el provider escaneaba la raiz e incluia recursivamente las subcarpetas `projects/` e `infrastructure/`, generando duplicados que impedian a Grafana guardar updates de los dashboards.
 
 ### Pendiente (fases posteriores documentadas en `docs/pendientes/alloy-migration.md`)
 - Fase 2: consolidar cAdvisor y postgres-exporter en Alloy (queda 1 solo servicio en el agente).

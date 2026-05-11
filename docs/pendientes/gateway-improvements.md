@@ -23,7 +23,51 @@ Los logs de NGINX van a un volumen Docker sin rotacion. Opciones:
 
 Archivo a modificar: `docker-compose.yml` del gateway-hub.
 
-## 3. Promtail deprecado — migracion a Grafana Alloy
+## 3. Rate limit muy estricto para /huachicol/ (Grafana 429)
+Bloque actual en `gateway-hub/nginx/templates/gateway.conf.template:276-281`:
+```nginx
+location ^~ /huachicol/ {
+    limit_req zone=general burst=20 nodelay;
+    proxy_pass http://huachicol;
+    ...
+}
+```
+La zona `general` da `rate=10r/s, burst=20`. Es muy poco para Grafana, que en la carga inicial de un dashboard hace 50+ requests en paralelo (assets JS/CSS/fonts hasheados, plugin settings, datasource queries, variable resolution, avatar, WS live). El navegador recibe 429 y el dashboard ni siquiera carga el bundle principal (errores `Loading chunk X failed`).
+
+**Mitigaciones aplicadas en huachicol (parciales, reducen carga del backend pero no eliminan el 429):**
+- `GF_PLUGINS_DISABLE_PLUGINS` para los 4 plugins de drilldown que Grafana 12 precarga (`grafana-exploretraces-app`, `grafana-lokiexplore-app`, `grafana-metricsdrilldown-app`, `grafana-pyroscope-app`).
+- `GF_FEATURE_TOGGLES_DISABLE=preinstallAutoUpdate,dashgpt`.
+- Dashboard `containers.json` con `refresh: 1m`, `topk(20, ...)` y `maxLines: 100`.
+
+**Fix recomendado en gateway-hub:**
+- Zona dedicada `huachicol` con `rate=30r/s, burst=200, nodelay` (o similar).
+- Idealmente, exentar `^/huachicol/public/` (assets estaticos con hash inmutables) del rate limit y agregar `proxy_cache` con TTL largo.
+
+Ejemplo:
+```nginx
+limit_req_zone $binary_remote_addr zone=huachicol:10m rate=30r/s;
+
+location ^~ /huachicol/public/ {
+    proxy_pass http://huachicol;
+    include /etc/nginx/includes/proxy-params.inc;
+    proxy_cache static_cache;
+    proxy_cache_valid 200 7d;
+    add_header Cache-Control "public, immutable, max-age=604800";
+}
+
+location ^~ /huachicol/ {
+    limit_req zone=huachicol burst=200 nodelay;
+    proxy_pass http://huachicol;
+    include /etc/nginx/includes/proxy-params.inc;
+    proxy_set_header Accept-Encoding "";
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+}
+```
+Aplica al repo `gateway-hub`, no a huachicol.
+
+## 4. Promtail deprecado — migracion a Grafana Alloy
 Promtail entro en EOL en marzo 2026. La migracion a Grafana Alloy aplica tanto al gateway como a los agentes de huachicol.
 
 - **Huachicol (agentes):** plan detallado en `docs/pendientes/alloy-migration.md` (fases 2 y 3 documentadas; fase 1 en ejecucion / changelog).

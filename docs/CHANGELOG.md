@@ -14,6 +14,24 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.17.1] - 2026-05-12
+
+### Cambiado
+- **Dashboard `Contenedores - Vista Detallada` enriquecido** (`grafana/dashboards/infrastructure/containers.json`): pasa de tabla + timeseries basicos a 29 panels distribuidos en 8 secciones con filas colapsables. Nuevas visualizaciones:
+  - **Resumen ejecutivo** con stat cards de contenedores activos, CPU agregado, memoria total y logs/s del cluster.
+  - **Distribucion por proyecto** con piechart (`container_memory_usage_bytes` agrupado por `container_label_com_docker_compose_project`) y bargauge gradiente de containers por proyecto.
+  - **Top consumo** con dos bargauges horizontales para top 10 memoria y top 10 CPU.
+  - **Tabla de estado** con CPU%/memoria/uptime/ultima actividad y celdas color-background segun threshold.
+  - **Inventario detallado** con CPU/memoria como gauges, red RX/TX y tasa de logs en una sola fila clickable.
+  - **State-timeline** "Mapa de actividad por container" (logs/min via Loki `count_over_time`).
+  - **Drill-down links** en las tablas: click en un container abre Loki Explore con la query `{container_name="..."}` preseteada.
+- **Panel de reinicios reemplazado por trafico HTTP del gateway**:
+  - Removidos: annotation `Reinicios de containers` y stat cards `Reinicios (30 min)` y `Containers reiniciados (5 min)` (poco utiles en operacion diaria).
+  - Agregados: stat `Requests/seg (gateway)` con `sum(rate(nginx_http_requests_total[5m]))` y sparkline, y stat horizontal `Conexiones activas (gateway)` con las 4 series de `nginx_connections_*` (activas/leyendo/escribiendo/en espera).
+  - **Limitacion conocida:** el `nginx-exporter` instalado es de tipo stub_status, no expone status codes, URIs ni latencia. Para drill-down por endpoint queda pendiente migrar a `nginx-prometheus-exporter` con modulo `vts` o cruzar con logs de gateway en Loki.
+
+---
+
 ## [1.17.0] - 2026-05-11
 
 ### Cambiado

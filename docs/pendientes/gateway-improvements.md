@@ -67,7 +67,22 @@ location ^~ /huachicol/ {
 ```
 Aplica al repo `gateway-hub`, no a huachicol.
 
-## 4. Promtail deprecado — migracion a Grafana Alloy
+## 4. nginx-exporter solo expone stub_status
+El `nginx-exporter` del gateway hoy es del tipo basico (lee `/stub_status`). Solo expone:
+- `nginx_http_requests_total` (contador acumulado, sin labels)
+- `nginx_connections_{active,reading,writing,waiting,accepted,handled}`
+- `nginx_up`
+
+No hay desglose por status code, URI, upstream ni latencia, lo que limita el dashboard `Contenedores - Vista Detallada` (panels de trafico HTTP solo muestran totales y estados de conexion).
+
+**Opciones para drill-down:**
+- **A.** Migrar a `nginx-prometheus-exporter` con modulo `vts` parcheado en NGINX (`nginx_vts_*` series con labels por server/upstream/status).
+- **B.** Aprovechar el `json_logs` ya configurado en `/IIEG/gateway-hub/nginx/nginx.conf` y consultarlo desde Loki/LogQL para construir paneles por URI y status. Requiere confirmar que Promtail (o futuro Alloy) este enviando los access logs del gateway a Loki.
+- **C.** Combinar B con `loki.process` + `stage.metrics` para exponer las series como Prometheus desde Alloy (cardinality controlada).
+
+Opcion B es la mas barata; A da metricas mas confiables.
+
+## 5. Promtail deprecado — migracion a Grafana Alloy
 Promtail entro en EOL en marzo 2026. La migracion a Grafana Alloy aplica tanto al gateway como a los agentes de huachicol.
 
 - **Huachicol (agentes):** plan detallado en `docs/pendientes/alloy-migration.md` (fases 2 y 3 documentadas; fase 1 en ejecucion / changelog).

@@ -1698,14 +1698,12 @@
       "options": {
         "showHeader": true,
         "footer": {
-          "show": true,
+          "show": false,
           "reducer": [
             "sum"
           ],
           "countRows": false,
-          "fields": [
-            "Memoria"
-          ]
+          "fields": ""
         },
         "cellHeight": "sm",
         "sortBy": [
@@ -2432,31 +2430,65 @@
       ]
     },
     {
-      "title": "Alertas activas",
-      "type": "alertlist",
+      "title": "Alertas activas (firing)",
+      "type": "stat",
       "gridPos": {
         "h": 7,
         "w": 8,
         "x": 16,
         "y": 114
       },
-      "options": {
-        "maxItems": 20,
-        "sortOrder": 1,
-        "dashboardAlerts": false,
-        "alertName": "",
-        "stateFilter": {
-          "firing": true,
-          "pending": true,
-          "noData": false,
-          "normal": false,
-          "error": true
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
         }
       },
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      }
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\"}) OR vector(0)",
+          "legendFormat": "firing",
+          "refId": "A"
+        },
+        {
+          "expr": "count(ALERTS{alertstate=\"pending\"}) OR vector(0)",
+          "legendFormat": "pending",
+          "refId": "B"
+        }
+      ]
     },
     {
       "title": "Logs con errores (\u00faltimos 30 min)",

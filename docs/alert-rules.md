@@ -15,7 +15,7 @@
 - **Espera:** 5 minutos
 - **Que significa:** El servicio esta respondiendo lento. Puede ser carga alta, queries lentos o recursos insuficientes.
 - **Requiere:** Que el servicio exponga la metrica `http_request_duration_seconds` (histogram).
-- **Servicios que aplican:** ninguno actualmente. mapalab-backend y mariachi-backend exponen `/metrics` con counters de negocio (`mapalab_*_total`, `mariachi_*_total`) pero no `http_request_duration_seconds`/`http_requests_total`. Para activar esta alerta hay que instrumentar middlewares HTTP en sus apps FastAPI.
+- **Servicios que aplican:** mapalab-backend y mariachi-backend (instrumentados con `prometheus-fastapi-instrumentator`, exponen `http_request_duration_seconds` y `http_requests_total{status}`).
 
 ### HighErrorRate
 - **Severidad:** critical
@@ -23,7 +23,7 @@
 - **Espera:** 2 minutos
 - **Que significa:** El servicio esta fallando frecuentemente. Revisar logs del servicio afectado.
 - **Requiere:** Que el servicio exponga `http_requests_total` con label `status_code`.
-- **Servicios que aplican:** ninguno actualmente. mapalab-backend y mariachi-backend exponen `/metrics` con counters de negocio (`mapalab_*_total`, `mariachi_*_total`) pero no `http_request_duration_seconds`/`http_requests_total`. Para activar esta alerta hay que instrumentar middlewares HTTP en sus apps FastAPI.
+- **Servicios que aplican:** mapalab-backend y mariachi-backend (instrumentados con `prometheus-fastapi-instrumentator`, exponen `http_request_duration_seconds` y `http_requests_total{status}`).
 
 ### HighMemoryUsage
 - **Severidad:** warning

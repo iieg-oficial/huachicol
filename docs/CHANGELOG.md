@@ -14,6 +14,26 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.18.0] - 2026-05-13
+
+### Agregado
+- **Dashboard `Aplicaciones — Mapalab & Mariachi`** (`grafana/dashboards/projects/aplicaciones.json`, uid `iieg-aplicaciones`, folder `Projects`): 37 paneles distribuidos en 4 secciones colapsables que consumen las métricas HTTP estándar (instrumentator) y custom de negocio (`mapalab_*`, `mariachi_*`).
+  - **MapaLab — HTTP**: stats de RPS, latencia p95, error rate 5xx y total 1h; timeseries de RPS por handler (top 10), latencias p50/p95/p99, status codes apilados; bargauge de top 5 handlers más lentos.
+  - **MapaLab — Negocio**: descargas/min, shares creados 1h, cache hit ratio, embeds denegados 1h; timeseries de embeds (requests/denied/quota), shares (creados/accedidos/pinneados), `mapalab_embed_vital_ms` p50/p95, búsquedas+tree+refresh.
+  - **Mariachi — HTTP**: mismas visualizaciones que mapalab pero filtrando `project="mariachi"`.
+  - **Mariachi — Negocio**: stats de logins success/failed/locked y rate-limit hits 1h; timeseries de logins, geoserver+tree_notify, media uploads/deletes y pipeline SIEEJ (formularios/envios/expired/reabierto); bargauge de writes por entidad (users, projects, layers, eventos, etc).
+- **Reglas `HighLatency` y `HighErrorRate` ahora aplicables a mapalab-backend y mariachi-backend** porque ambos exponen `http_request_duration_seconds` y `http_requests_total{status}` via `prometheus-fastapi-instrumentator`. Documentado en `docs/alert-rules.md`.
+
+### Cambiado
+- `docs/alert-rules.md`: actualizada la nota sobre qué servicios aplican para las reglas HTTP.
+
+### Notas para integración con mapalab y mariachi
+- Mapalab (`/IIEG/mapalab`): nuevos cambios en `backend/requirements.txt`, `backend/app/server.py` (Instrumentator con presets `requests()` y `latency()`), `backend/app/metrics.py` (`generate_latest(REGISTRY)` concat al render manual) y `nginx/nginx.conf` (bloqueo `^/mapalab/api/metrics$` con `return 403` — defense-in-depth contra exposición pública vía `mapalab-nginx:3006`). Se aplica al rebuildear con `make deploy`.
+- Mariachi (`/IIEG/mariachi`): nuevos cambios en `api/pyproject.toml`, `api/app/main.py`, `api/app/api/metrics.py` (mismo patrón). Mariachi no publica puerto host, por lo que no requiere bloqueo en nginx.
+- **Cuidado con regex**: `excluded_handlers` del instrumentator usa `re.search`, no match exacto. Patrones como `"/"` matchean cualquier path. Usar anclas `^...$` (e.g. `^/metrics$`).
+
+---
+
 ## [1.17.4] - 2026-05-13
 
 ### Agregado

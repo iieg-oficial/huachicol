@@ -80,14 +80,13 @@ Almacenamiento S3 basado en MinIO. Buckets: mapalab, dateengine, portal, huachic
 huachicol/
 ├── docker-compose.yml              # 8 servicios + nginx-auth
 ├── Makefile                        # start, stop, restart, backup, restore, backup-list, agent-*, targets
-├── .env.example                    # Variables: credenciales, IPs, puertos, MinIO
+├── .env.example                    # Variables: credenciales, IPs, puertos, targets
 ├── .gitignore                      # .env + prometheus/targets/*.json (generados)
 ├── prometheus/
-│   ├── prometheus.yml              # 10 scrape jobs (5 estaticos + 5 file_sd), scrape_interval 15s
+│   ├── prometheus.yml              # 9 scrape jobs (5 estaticos + 4 file_sd), scrape_interval 15s
 │   ├── rules/alerts.yml            # 3 grupos: service_alerts, database_alerts, monitoring_stack_alerts
 │   └── targets/
-│       ├── *.json                       # Generados por make targets (en .gitignore)
-│       └── minio-token                  # JWT para scraping MinIO (generado)
+│       └── *.json                       # Generados por make targets (en .gitignore)
 ├── grafana/
 │   ├── provisioning/
 │   │   ├── datasources/datasources.yml  # Prometheus (default), Loki
@@ -159,8 +158,8 @@ huachicol/
 ### Jobs dinamicos (file_sd_configs, generados por `make targets`)
 | Job | Archivo targets | metrics_path | Contenido |
 |---|---|---|---|
-| projects | projects.json | /metrics | Backends de proyectos (urlschiquitas, mapalab, gateway, etc.) |
-| minio | minio.json | /minio/v2/metrics/cluster | MinIO con bearer_token_file para JWT auth |
+| projects | projects.json | /metrics | Backends de proyectos (mapalab, mariachi, gateway, etc.) |
+| acervo-seaweedfs | acervo-seaweedfs.json | /metrics | SeaweedFS (filer/master/volume metrics) |
 | node-exporter | node-exporter.json | /huachicol (monitoring) o `/api/v0/component/prometheus.exporter.unix.host/metrics` (remotos via Alloy) | Metricas de host. El path remoto se override por target con `__metrics_path__` en file_sd |
 | cadvisor | cadvisor.json | /huachicol | Metricas de contenedores por servidor (monitoring + remotos) |
 | postgres-exporter | postgres-exporter.json | /huachicol | PostgreSQL via postgres-exporter del agente |
@@ -261,10 +260,9 @@ MONITORING_AUTH_USER, MONITORING_AUTH_PASSWORD
 PORTAL_SERVER_IP, MAPALAB_SERVER_IP, MARIACHI_SERVER_IP, GEOSERVER_SERVER_IP
 
 # Targets de proyectos (formato host:puerto, dejar vacio si no aplica)
-URLSCHIQUITAS_BACKEND_TARGET, URLSCHIQUITAS_POSTGRES_TARGET
-MAPALAB_BACKEND_TARGET, GATEWAY_NGINX_TARGET
+MAPALAB_BACKEND_TARGET, MARIACHI_BACKEND_TARGET, GATEWAY_NGINX_TARGET
 DATAENGINE_POSTGRES_TARGET
-ACERVO_MINIO_TARGET, ACERVO_MINIO_TOKEN (JWT)
+ACERVO_METRICS_TARGET
 
 # MinIO backups (credenciales de huachicol-user, no admin)
 MINIO_ENDPOINT, MINIO_BUCKET_USER, MINIO_BUCKET_PASSWORD
@@ -374,7 +372,7 @@ make backup-cron-install / backup-cron-remove       # Cron semanal (domingos, 3A
 - Alloy del agente reemplaza a Promtail + node-exporter standalone. Logs via `loki.source.docker` (socket Docker) + `loki.source.file` (syslog); metricas de host via `prometheus.exporter.unix`. Positions y estado en volumen `alloy_data`.
 - Loki tiene `retention_enabled: true` en el compactor — la retencion de 744h si se aplica.
 - Todas las imagenes Docker estan pinneadas a versiones estables especificas. cAdvisor requiere v0.55.1+ para compatibilidad con Docker 29 + storage driver `overlayfs` + cgroups v2.
-- MinIO expone metricas via JWT auth. El token se genera desde Acervo con `make prometheus-token` y se pone en `ACERVO_MINIO_TOKEN` del `.env` de huachicol. Ver `docs/agregar-proyecto.md`.
+- Acervo (SeaweedFS) expone metricas en `/metrics` sin auth, en el puerto configurado con `-metricsPort` (default `acervo-seaweedfs:9091`). Se configura via `ACERVO_METRICS_TARGET` del `.env` de huachicol. Ver `docs/agregar-proyecto.md`.
 - Los backups usan credenciales de `huachicol-user` (generado por `make init-buckets` en Acervo), con acceso limitado al bucket `huachicol`. El bucket se crea desde Acervo, no desde huachicol.
 - cAdvisor y postgres-exporter del agente sirven en `/huachicol`. Alloy del agente expone su HTTP server en `:12345`; las metricas de host se scrapean en `/api/v0/component/prometheus.exporter.unix.host/metrics` (override `__metrics_path__` por target en file_sd).
 - Profiles del agente: `all` (alloy + cadvisor), `telemetry` (solo alloy), `cadvisor`, `postgres`. En servidores donde gateway ya empuja logs propios, usar `PROFILES="cadvisor"` para evitar duplicados de Docker logs.

@@ -6,7 +6,7 @@
 - **Severidad:** critical
 - **Condicion:** `up == 0`
 - **Espera:** 1 minuto
-- **Que significa:** Un target de Prometheus dejo de responder. Aplica a todos los jobs: prometheus, grafana, loki, urlschiquitas-backend, urlschiquitas-postgres, mapalab-backend, gateway-nginx, node-exporter, cadvisor.
+- **Que significa:** Un target de Prometheus dejo de responder. Aplica a todos los jobs: prometheus, grafana, loki, mapalab-backend, mariachi-backend, gateway-nginx, dataengine-postgres, acervo-seaweedfs, node-exporter, cadvisor.
 - **Accion:** Verificar que el servicio este corriendo (`docker ps`) y que el puerto sea accesible.
 
 ### HighLatency
@@ -15,7 +15,7 @@
 - **Espera:** 5 minutos
 - **Que significa:** El servicio esta respondiendo lento. Puede ser carga alta, queries lentos o recursos insuficientes.
 - **Requiere:** Que el servicio exponga la metrica `http_request_duration_seconds` (histogram).
-- **Servicios que aplican:** urlschiquitas-backend, mapalab-backend (si exponen la metrica).
+- **Servicios que aplican:** mapalab-backend, mariachi-backend (si exponen la metrica).
 
 ### HighErrorRate
 - **Severidad:** critical
@@ -23,7 +23,7 @@
 - **Espera:** 2 minutos
 - **Que significa:** El servicio esta fallando frecuentemente. Revisar logs del servicio afectado.
 - **Requiere:** Que el servicio exponga `http_requests_total` con label `status_code`.
-- **Servicios que aplican:** urlschiquitas-backend, mapalab-backend (si exponen la metrica).
+- **Servicios que aplican:** mapalab-backend, mariachi-backend (si exponen la metrica).
 
 ### HighMemoryUsage
 - **Severidad:** warning
@@ -48,7 +48,7 @@
 - **Condicion:** `pg_up == 0`
 - **Espera:** 1 minuto
 - **Que significa:** PostgreSQL no responde. Todas las aplicaciones que dependen de la BD estan afectadas.
-- **Requiere:** postgres-exporter activo (target `urlschiquitas-postgres`).
+- **Requiere:** postgres-exporter activo (target `dataengine-postgres`).
 - **Accion:** Verificar estado del contenedor de PostgreSQL y sus logs.
 
 ### TooManyConnections
@@ -66,9 +66,10 @@
 | prometheus | localhost:9090 | - |
 | grafana | grafana:3000 | - |
 | loki | loki:3100 | - |
-| urlschiquitas-backend | host.docker.internal:9090 | urlschiquitas |
-| urlschiquitas-postgres | host.docker.internal:9187 | urlschiquitas |
-| mapalab-backend | 192.168.1.x:3001 | mapalab |
+| mapalab-backend | mapalab-backend:8000 | mapalab (si expone /metrics) |
+| mariachi-backend | mariachi-api:8000 | mariachi (si expone /metrics) |
 | gateway-nginx | nginx-exporter:9113 | gateway-hub |
+| dataengine-postgres | desde DATAENGINE_POSTGRES_TARGET | dataengine |
+| acervo-seaweedfs | desde ACERVO_METRICS_TARGET | acervo |
 | node-exporter | file_sd (targets/node-exporter.json) | infra |
 | cadvisor | file_sd (targets/cadvisor.json) | infra |

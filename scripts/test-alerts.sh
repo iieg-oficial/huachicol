@@ -1,6 +1,17 @@
 #!/bin/bash
 
-ALERTMANAGER_URL="${ALERTMANAGER_URL:-http://localhost:${ALERTMANAGER_PORT:-6002}}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+if [ -f "${PROJECT_DIR}/.env" ]; then
+    set -a
+    . "${PROJECT_DIR}/.env"
+    set +a
+fi
+
+ALERTMANAGER_URL="${ALERTMANAGER_URL:-http://localhost:${ALERTMANAGER_PORT:?ALERTMANAGER_PORT is required}}"
+PG_INSTANCE="${DATAENGINE_POSTGRES_TARGET:?DATAENGINE_POSTGRES_TARGET is required}"
+NGINX_INSTANCE="${GATEWAY_NGINX_TARGET:?GATEWAY_NGINX_TARGET is required}"
+NODE_INSTANCE="node-exporter:9100"
 
 send_alert() {
     local name="$1"
@@ -42,14 +53,14 @@ alert_service_down() {
         "labels": {
             "alertname": "ServiceDown",
             "job": "gateway-nginx",
-            "instance": "nginx-exporter:9113",
+            "instance": "'"$NGINX_INSTANCE"'",
             "service": "nginx",
             "project": "gateway-hub",
             "severity": "critical"
         },
         "annotations": {
             "summary": "Servicio gateway-nginx caido",
-            "description": "gateway-nginx (nginx-exporter:9113) lleva mas de 1 minuto sin responder."
+            "description": "gateway-nginx ('"$NGINX_INSTANCE"') lleva mas de 1 minuto sin responder."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -61,14 +72,14 @@ alert_high_latency() {
         "status": "firing",
         "labels": {
             "alertname": "HighLatency",
-            "instance": "host.docker.internal:9090",
-            "service": "backend",
-            "project": "urlschiquitas",
+            "instance": "'"$NGINX_INSTANCE"'",
+            "service": "nginx",
+            "project": "gateway-hub",
             "severity": "warning"
         },
         "annotations": {
-            "summary": "Latencia alta en urlschiquitas",
-            "description": "La latencia promedio es 2.5s en urlschiquitas."
+            "summary": "Latencia alta en gateway-hub",
+            "description": "La latencia promedio es 2.5s en gateway-hub."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -80,14 +91,14 @@ alert_high_error_rate() {
         "status": "firing",
         "labels": {
             "alertname": "HighErrorRate",
-            "instance": "host.docker.internal:9090",
-            "service": "backend",
-            "project": "urlschiquitas",
+            "instance": "'"$NGINX_INSTANCE"'",
+            "service": "nginx",
+            "project": "gateway-hub",
             "severity": "critical"
         },
         "annotations": {
-            "summary": "Tasa de errores alta en urlschiquitas",
-            "description": "La tasa de errores 5xx es 12% en urlschiquitas."
+            "summary": "Tasa de errores alta en gateway-hub",
+            "description": "La tasa de errores 5xx es 12% en gateway-hub."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -99,13 +110,13 @@ alert_high_memory() {
         "status": "firing",
         "labels": {
             "alertname": "HighMemoryUsage",
-            "instance": "portal-nvo:9100",
+            "instance": "'"$NODE_INSTANCE"'",
             "service": "node-exporter",
             "severity": "warning"
         },
         "annotations": {
-            "summary": "Uso de memoria alto en portal-nvo:9100",
-            "description": "El uso de memoria supera el 90% en portal-nvo:9100."
+            "summary": "Uso de memoria alto en '"$NODE_INSTANCE"'",
+            "description": "El uso de memoria supera el 90% en '"$NODE_INSTANCE"'."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -117,14 +128,14 @@ alert_disk_low() {
         "status": "firing",
         "labels": {
             "alertname": "DiskSpaceLow",
-            "instance": "portal-nvo:9100",
+            "instance": "'"$NODE_INSTANCE"'",
             "service": "node-exporter",
             "mountpoint": "/",
             "severity": "warning"
         },
         "annotations": {
-            "summary": "Espacio en disco bajo en portal-nvo:9100",
-            "description": "El espacio disponible en disco es menor al 10% en portal-nvo:9100."
+            "summary": "Espacio en disco bajo en '"$NODE_INSTANCE"'",
+            "description": "El espacio disponible en disco es menor al 10% en '"$NODE_INSTANCE"'."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -136,14 +147,14 @@ alert_postgres_down() {
         "status": "firing",
         "labels": {
             "alertname": "PostgreSQLDown",
-            "instance": "host.docker.internal:9187",
+            "instance": "'"$PG_INSTANCE"'",
             "service": "postgres",
-            "project": "urlschiquitas",
+            "project": "dataengine",
             "severity": "critical"
         },
         "annotations": {
             "summary": "PostgreSQL caido",
-            "description": "PostgreSQL en host.docker.internal:9187 no responde."
+            "description": "PostgreSQL en '"$PG_INSTANCE"' no responde."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"
@@ -155,14 +166,14 @@ alert_too_many_connections() {
         "status": "firing",
         "labels": {
             "alertname": "TooManyConnections",
-            "instance": "host.docker.internal:9187",
+            "instance": "'"$PG_INSTANCE"'",
             "service": "postgres",
-            "project": "urlschiquitas",
+            "project": "dataengine",
             "severity": "warning"
         },
         "annotations": {
             "summary": "Demasiadas conexiones en la base de datos",
-            "description": "Las conexiones estan al 85% del maximo en host.docker.internal:9187."
+            "description": "Las conexiones estan al 85% del maximo en '"$PG_INSTANCE"'."
         },
         "startsAt": "'"$NOW"'",
         "generatorURL": "'"$ALERTMANAGER_URL"'/test"

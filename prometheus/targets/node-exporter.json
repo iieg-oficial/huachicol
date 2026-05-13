@@ -4,7 +4,7 @@
     "labels": { "server": "monitoring" }
   },
   {
-    "targets": ["10.13.201.117:9100"],
-    "labels": { "server": "dataengine" }
+    "targets": ["10.13.201.117:12345"],
+    "labels": { "server": "dataengine", "__metrics_path__": "/api/v0/component/prometheus.exporter.unix.host/metrics" }
   }
 ]

@@ -14,6 +14,24 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.17.2] - 2026-05-13
+
+### Removido
+- **Servicio `urlschiquitas` eliminado del stack** (proyecto descontinuado). Limpieza completa de referencias en `.env`, `.env.example`, `scripts/generate-targets.sh`, `scripts/test-alerts.sh`, `docs/agregar-proyecto.md`, `docs/context.md`, `docs/configuracion-env.md` y `docs/alert-rules.md`. Alertas de prueba `HighLatency`/`HighErrorRate` reapuntadas a `gateway-hub/nginx`, y `PostgreSQLDown`/`TooManyConnections` a `dataengine/postgres`.
+- **Variables muertas en `.env`** removidas: `TEMPO_PORT`, `TEMPO_OTLP_GRPC_PORT`, `TEMPO_OTLP_HTTP_PORT`, `TEMPO_ZIPKIN_PORT`, `TEMPO_JAEGER_PORT` (no existe servicio `tempo` en `docker-compose.yml`).
+- **Job legacy de MinIO en `generate-targets.sh`** removido: bloque que generaba `minio.json` y `minio-token` con `ACERVO_MINIO_TARGET`/`ACERVO_MINIO_TOKEN`. El job `acervo-minio` ya no existe en `prometheus.yml` desde `6640395` (reemplazado por `acervo-seaweedfs`). Variables `ACERVO_MINIO_*` removidas de `.env.example` y de la doc de provisioning JWT (SeaweedFS no requiere JWT).
+- **Entrada de `prometheus/targets/minio-token`** removida del `.gitignore`.
+
+### Cambiado
+- **`ACERVO_METRICS_TARGET` ahora se lee desde `.env`** en lugar de tener `acervo-seaweedfs:9091` hardcodeado en `prometheus/targets/acervo-seaweedfs.json`. Production tiene servidores separados; el target se inyecta via env. `generate-targets.sh` genera el JSON desde la variable.
+- **`scripts/test-alerts.sh` ahora carga `.env`** y resuelve targets desde variables (`DATAENGINE_POSTGRES_TARGET`, `GATEWAY_NGINX_TARGET`) con `:?` para fallar explicitamente si no estan definidas. Sin defaults hardcoded.
+
+### Agregado
+- **`PROMETHEUS_EXTERNAL_URL` y `GRAFANA_EXTERNAL_URL` en `.env`** (vacias por default). Las consume el webhook de Discord en `alertmanager/discord-webhook/server.py` para incluir enlaces a Prometheus/Grafana en los embeds de alertas. Si quedan vacias, los embeds salen sin botones de enlace (no rompe nada).
+- **`MARIACHI_BACKEND_TARGET` en `.env`** (vacia) para futura activacion cuando `mariachi/api` exponga `/metrics` via `prometheus-fastapi-instrumentator`.
+
+---
+
 ## [1.17.1] - 2026-05-12
 
 ### Cambiado

@@ -33,7 +33,7 @@ Agregar una linea `add_target` en la seccion de projects:
 FIRST=true
 {
     printf '['
-    add_target "${URLSCHIQUITAS_BACKEND_TARGET:-}" "project" "urlschiquitas" ', "service": "backend"'
+    add_target "${MAPALAB_BACKEND_TARGET:-}" "project" "mapalab" ', "service": "backend"'
     # ... targets existentes ...
     add_target "${MIAPP_BACKEND_TARGET:-}" "project" "miapp" ', "service": "backend"'   # <-- nueva linea
     printf '\n]\n'
@@ -56,32 +56,19 @@ Prometheus detecta los cambios en ~30 segundos (file_sd_configs con refresh_inte
 
 ---
 
-## Caso especial: MinIO
+## Caso especial: Acervo (SeaweedFS)
 
-MinIO usa un endpoint de metricas diferente (`/minio/v2/metrics/cluster`) y requiere autenticacion JWT.
-
-### Generar el token JWT
-
-Desde el proyecto **Acervo** (`/home/egar/IIEG/acervo`):
-
-```bash
-make prometheus-token ENV=prod
-# o sin Makefile:
-# docker run --rm --network <red> --entrypoint sh minio/mc -c \
-#   "mc alias set acervo http://acervo-minio:9000 ACCESS SECRET && \
-#    mc admin prometheus generate acervo"
-```
-
-Copiar el valor de `bearer_token` que se imprime.
+SeaweedFS expone metricas en `/metrics` sin autenticacion, en el puerto configurado con `-metricsPort`.
 
 ### Configurar en huachicol
 
 Editar `.env`:
 
 ```bash
-ACERVO_MINIO_TARGET=acervo-minio:9000
-ACERVO_MINIO_TOKEN=<token JWT generado>
+ACERVO_METRICS_TARGET=acervo-seaweedfs:9091
 ```
+
+En **production** apuntar al host:puerto del servidor donde corra Acervo (puede ser una IP interna).
 
 Regenerar targets:
 
@@ -89,14 +76,7 @@ Regenerar targets:
 make targets
 ```
 
-El script genera `prometheus/targets/minio.json` y `prometheus/targets/minio-token`.
-
-### Notas sobre el token
-
-- En **dev/staging** el token se genera desde el MinIO local
-- En **produccion** se genera igual pero apuntando al MinIO de produccion
-- Si MinIO se reinicia, el token sigue siendo valido (es un JWT firmado con las credenciales de acceso)
-- Si cambian las credenciales de MinIO (`MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY`), hay que regenerar el token
+El script genera `prometheus/targets/acervo-seaweedfs.json`.
 
 ---
 
@@ -122,13 +102,11 @@ Resumen rapido:
 
 | Variable | Proyecto | Servicio |
 |---|---|---|
-| `URLSCHIQUITAS_BACKEND_TARGET` | urlschiquitas | backend |
-| `URLSCHIQUITAS_POSTGRES_TARGET` | urlschiquitas | postgres |
 | `MAPALAB_BACKEND_TARGET` | mapalab | backend |
 | `MARIACHI_BACKEND_TARGET` | mariachi | backend |
 | `GATEWAY_NGINX_TARGET` | gateway-hub | nginx |
 | `DATAENGINE_POSTGRES_TARGET` | dataengine | postgres |
-| `ACERVO_MINIO_TARGET` | acervo | minio |
+| `ACERVO_METRICS_TARGET` | acervo | seaweedfs |
 
 | Variable | Servidor |
 |---|---|

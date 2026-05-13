@@ -64,8 +64,6 @@ echo "Generated cadvisor.json"
 FIRST=true
 {
     printf '['
-    add_target "${URLSCHIQUITAS_BACKEND_TARGET:-}" "project" "urlschiquitas" ', "service": "backend"'
-    add_target "${URLSCHIQUITAS_POSTGRES_TARGET:-}" "project" "urlschiquitas" ', "service": "postgres"'
     add_target "${MAPALAB_BACKEND_TARGET:-}" "project" "mapalab" ', "service": "backend"'
     add_target "${MARIACHI_BACKEND_TARGET:-}" "project" "mariachi" ', "service": "backend"'
     add_target "${GATEWAY_NGINX_TARGET:-}" "project" "gateway-hub" ', "service": "nginx"'
@@ -82,15 +80,11 @@ FIRST=true
 } > "${TARGETS_DIR}/postgres-exporter.json"
 echo "Generated postgres-exporter.json"
 
-# --- minio targets (endpoint especial /minio/v2/metrics/cluster) ---
+# --- acervo seaweedfs target ---
 FIRST=true
 {
     printf '['
-    add_target "${ACERVO_MINIO_TARGET:-}" "project" "acervo" ', "service": "minio"'
+    add_target "${ACERVO_METRICS_TARGET:-}" "project" "acervo" ', "service": "seaweedfs"'
     printf '\n]\n'
-} > "${TARGETS_DIR}/minio.json"
-echo "Generated minio.json"
-
-# --- minio token ---
-printf '%s' "${ACERVO_MINIO_TOKEN:-}" > "${TARGETS_DIR}/minio-token"
-echo "Generated minio-token"
+} > "${TARGETS_DIR}/acervo-seaweedfs.json"
+echo "Generated acervo-seaweedfs.json"

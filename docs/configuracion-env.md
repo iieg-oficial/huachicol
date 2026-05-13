@@ -60,23 +60,11 @@ El formato es `HOST:PUERTO`. El host es la IP del servidor donde corre el proyec
 
 | Variable | Descripcion |
 |---|---|
-| `URLSCHIQUITAS_BACKEND_TARGET` | Backend de urlschiquitas |
-| `URLSCHIQUITAS_POSTGRES_TARGET` | postgres-exporter de urlschiquitas |
 | `MAPALAB_BACKEND_TARGET` | Backend de mapalab |
+| `MARIACHI_BACKEND_TARGET` | Backend de mariachi |
 | `GATEWAY_NGINX_TARGET` | Metricas de nginx del gateway |
 | `DATAENGINE_POSTGRES_TARGET` | postgres-exporter de dataengine |
-| `ACERVO_MINIO_TARGET` | Endpoint de metricas de MinIO |
-| `ACERVO_MINIO_TOKEN` | JWT para scraping de MinIO (ver abajo) |
-
-### Obtener el token de MinIO
-
-Desde el servidor donde corre Acervo:
-
-```bash
-make prometheus-token ENV=prod INFRA=gateway
-```
-
-Copiar el JWT que imprime y pegarlo en `ACERVO_MINIO_TOKEN`.
+| `ACERVO_METRICS_TARGET` | Endpoint de metricas de SeaweedFS |
 
 > En entornos uniserver dejar vacias las variables de proyectos que no esten corriendo.
 

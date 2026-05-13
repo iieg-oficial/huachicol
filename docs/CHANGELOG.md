@@ -14,6 +14,22 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.19.1] - 2026-05-13
+
+### Arreglado
+- **`Datasource ${DS_PROMETHEUS} was not found`** en `ecosistema-iieg.json`: el dashboard provisionado dejaba `current: {}` vacío en las variables datasource, por lo que `${DS_PROMETHEUS}`/`${DS_LOKI}` nunca resolvían en runtime. Cambio: se fijan UIDs estables en `grafana/provisioning/datasources/datasources.yml` (`uid: prometheus` y `uid: loki`) y el dashboard referencia esos UIDs directamente (`{ "type": "prometheus", "uid": "prometheus" }`). Variables `DS_PROMETHEUS`/`DS_LOKI` removidas del templating.
+  - Para forzar el UID fijo sobre datasources ya existentes con UID autogenerado se añadió `deleteDatasources` al provisioning. Recreación: `docker compose up -d --force-recreate grafana`.
+- **`Cannot read properties of undefined (reading 'scopedVars')` en `TablePanel.tsx`** con Grafana 12.0.1: los `custom.cellOptions` tipo `gauge` con `mode: gradient` y `color-background` con `mode: gradient` requieren panel context (scopedVars) y crasheaban en columnas computed. Cambio: todas las columnas (`Uptime`, `Última actividad`, `Memoria`, `CPU`, `Red RX`, `Red TX`) usan ahora `cellOptions: { type: "color-text" }`. Se pierde la visual de barras gauge pero el panel deja de tirar excepciones. El color por threshold/gradient del campo se mantiene.
+- **`400 /api/ruler/.../api/v1/rules/test/test`** del panel `alertlist`: sin `datasource` definido, Grafana consultaba el ruler de cada datasource (Prometheus + Loki); Loki no tiene ruler en esa ruta y devolvía 400. Cambio: `datasource: { type: "datasource", uid: "grafana" }` para que solo lea managed alerts de Grafana. `dashboardAlerts: false` mantiene el comportamiento previo.
+
+### Cambiado
+- **`loki/loki-config.yml`**: `server.log_level: warn` (antes default `info`). Loki en `info` registra ~7-10 líneas por cada query del frontend (`engine.go:263`, `metrics.go:237`, `metrics.go:409`, `roundtrip.go:359`, `table_manager.go:195`, `index_set.go:*`), lo que con el refresh del dashboard `Ecosistema IIEG` generaba ~3.2 logs/s sostenidos (98.5% nivel info, 1.5% warn/error). Las warns/errors (`failed mapping AST err="context canceled"`, `scheduler_processor` notifying finished query) son benignas: ocurren cuando Grafana cancela queries al refrescar paneles. Con `warn` el volumen baja ~98%; las trazas detalladas por traceID siguen disponibles temporalmente subiendo el nivel si se necesita debug puntual.
+
+### Notas operativas
+- Tras el fix de `node-exporter` (1.19.0) que eliminó ~6.4 logs/s de `broken pipe`, Loki quedó como el contenedor con más volumen de logs en los paneles "Volumen logs/s por container" y "Actividad de logs". El volumen no respondía a errores reales sino a verbosidad por defecto del propio Loki sirviendo queries del dashboard.
+
+---
+
 ## [1.19.0] - 2026-05-13
 
 ### Agregado

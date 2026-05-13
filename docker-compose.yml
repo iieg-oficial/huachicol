@@ -104,6 +104,8 @@ services:
     restart: unless-stopped
     environment:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      PROMETHEUS_EXTERNAL_URL: ${PROMETHEUS_EXTERNAL_URL:-}
+      GRAFANA_EXTERNAL_URL: ${GRAFANA_EXTERNAL_URL:-}
     networks:
       - monitoring
     healthcheck:

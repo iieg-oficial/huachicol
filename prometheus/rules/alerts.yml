@@ -8,8 +8,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Servicio {{ $labels.job }} caido"
-          description: "{{ $labels.job }} ({{ $labels.instance }}) lleva mas de 1 minuto sin responder."
+          summary: "El servicio {{ $labels.job }} no responde."
+          description: "{{ $labels.job }} ({{ $labels.instance }}) lleva más de 5 minutos sin responder al scrape de Prometheus."
 
       - alert: HighLatency
         expr: |
@@ -20,8 +20,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Latencia alta en {{ $labels.project }}"
-          description: "La latencia promedio es {{ $value }}s en {{ $labels.project }}."
+          summary: "Latencia promedio por encima de 1s en {{ $labels.project }}."
+          description: "La latencia promedio de los últimos 5 min es {{ $value | humanize }}s en {{ $labels.project }}."
 
       - alert: HighErrorRate
         expr: |
@@ -32,7 +32,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Tasa de errores alta en {{ $labels.project }}"
+          summary: "Tasa de errores 5xx por encima del 5% en {{ $labels.project }}."
           description: "La tasa de errores 5xx es {{ $value | humanizePercentage }} en {{ $labels.project }}."
 
       - alert: HighMemoryUsage
@@ -43,8 +43,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Uso de memoria alto en {{ $labels.instance }}"
-          description: "El uso de memoria supera el 90% en {{ $labels.instance }}."
+          summary: "Uso de memoria por encima del 90% en {{ $labels.instance }}."
+          description: "El uso de memoria de {{ $labels.instance }} lleva más de 5 minutos por encima del 90%."
 
       - alert: DiskSpaceLow
         expr: |
@@ -53,8 +53,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Espacio en disco bajo en {{ $labels.instance }}"
-          description: "El espacio disponible en disco es menor al 10% en {{ $labels.instance }}."
+          summary: "Espacio disponible en disco por debajo del 10% en {{ $labels.instance }}."
+          description: "La partición raíz de {{ $labels.instance }} tiene menos del 10% de espacio libre."
 
   - name: database_alerts
     interval: 30s
@@ -64,9 +64,10 @@ groups:
         for: 1m
         labels:
           severity: critical
+          service: postgresql
         annotations:
-          summary: "PostgreSQL caido"
-          description: "PostgreSQL en {{ $labels.instance }} no responde."
+          summary: "PostgreSQL no responde en {{ $labels.instance }}."
+          description: "El exporter no logra conectarse a PostgreSQL en {{ $labels.instance }} desde hace más de 1 minuto."
 
       - alert: TooManyConnections
         expr: |
@@ -75,9 +76,10 @@ groups:
         for: 5m
         labels:
           severity: warning
+          service: postgresql
         annotations:
-          summary: "Too many database connections"
-          description: "Database connections are at {{ $value | humanizePercentage }} of max on {{ $labels.instance }}"
+          summary: "Conexiones a PostgreSQL por encima del 80% del máximo en {{ $labels.instance }}."
+          description: "Las conexiones activas son {{ $value | humanizePercentage }} del máximo configurado en {{ $labels.instance }}."
 
   - name: monitoring_stack_alerts
     interval: 30s
@@ -87,27 +89,30 @@ groups:
         for: 1m
         labels:
           severity: critical
+          service: loki
         annotations:
-          summary: "Loki is down"
-          description: "Loki log aggregation service is unreachable"
+          summary: "Loki no responde."
+          description: "El servicio de agregación de logs Loki no es alcanzable desde Prometheus."
 
       - alert: GrafanaDown
         expr: up{job="grafana"} == 0
         for: 1m
         labels:
           severity: critical
+          service: grafana
         annotations:
-          summary: "Grafana is down"
-          description: "Grafana dashboard service is unreachable"
+          summary: "Grafana no responde."
+          description: "El servicio de dashboards Grafana no es alcanzable desde Prometheus."
 
       - alert: AlertmanagerDown
         expr: up{job="alertmanager"} == 0
         for: 1m
         labels:
           severity: critical
+          service: alertmanager
         annotations:
-          summary: "Alertmanager is down"
-          description: "Alertmanager is unreachable - alerts will not be delivered"
+          summary: "Alertmanager no responde."
+          description: "Alertmanager no es alcanzable; las alertas no podrán entregarse hasta que se restablezca."
 
       - alert: PrometheusStorageHigh
         expr: |
@@ -115,18 +120,20 @@ groups:
         for: 10m
         labels:
           severity: warning
+          service: prometheus
         annotations:
-          summary: "Prometheus storage consuming significant disk"
-          description: "Prometheus TSDB is using more than 30% of disk space"
+          summary: "Almacenamiento de Prometheus por encima del 30% del disco."
+          description: "El TSDB de Prometheus está utilizando más del 30% del espacio en disco de la raíz."
 
       - alert: PrometheusTargetScrapeFailure
         expr: increase(prometheus_target_scrapes_exceeded_sample_limit_total[5m]) > 0
         for: 5m
         labels:
           severity: warning
+          service: prometheus
         annotations:
-          summary: "Prometheus scrape failures detected"
-          description: "Some targets are exceeding sample limits"
+          summary: "Targets de Prometheus excediendo el límite de muestras."
+          description: "Algunos targets están superando el límite de muestras configurado en los últimos 5 minutos."
 
       - alert: LokiHighIngestionRate
         expr: |
@@ -134,6 +141,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          service: loki
         annotations:
-          summary: "Loki ingestion rate is high"
-          description: "Loki is receiving more than 10MB/s of logs"
+          summary: "Ingesta de logs en Loki por encima de 10 MB/s."
+          description: "Loki está recibiendo más de 10 MB/s de logs durante los últimos 5 minutos."

@@ -14,7 +14,12 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
-## [1.17.2] - 2026-05-13
+## [1.17.3] - 2026-05-13
+
+### Removido
+- **`PROMETHEUS_EXTERNAL_URL` y `GRAFANA_EXTERNAL_URL` eliminadas del stack.** Razon: la UI de Prometheus no tiene auth nativa y expone query API + metricas internas, por lo que publicarla al exterior no aplica; los enlaces a Grafana en los embeds aportaban poco valor frente al ruido que generaban. Cambios:
+  - Removidas del `.env`, `.env.example` y de `docker-compose.yml` (service `alertmanager-discord`).
+  - `alertmanager/discord-webhook/server.py`: eliminadas las constantes, la funcion `_links()`, el import `urllib.parse.quote` y el campo `Enlaces` de los embeds.
 
 ### Removido
 - **Servicio `urlschiquitas` eliminado del stack** (proyecto descontinuado). Limpieza completa de referencias en `.env`, `.env.example`, `scripts/generate-targets.sh`, `scripts/test-alerts.sh`, `docs/agregar-proyecto.md`, `docs/context.md`, `docs/configuracion-env.md` y `docs/alert-rules.md`. Alertas de prueba `HighLatency`/`HighErrorRate` reapuntadas a `gateway-hub/nginx`, y `PostgreSQLDown`/`TooManyConnections` a `dataengine/postgres`.

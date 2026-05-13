@@ -1,11 +1,8 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, timezone
-from urllib.parse import quote
 import json, os, urllib.error, urllib.request
 
 DISCORD_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
-PROMETHEUS_EXTERNAL_URL = os.environ.get("PROMETHEUS_EXTERNAL_URL", "").rstrip("/")
-GRAFANA_EXTERNAL_URL = os.environ.get("GRAFANA_EXTERNAL_URL", "").rstrip("/")
 
 COLORS = {
     "critical": 0xED4245,
@@ -49,20 +46,6 @@ def _target(labels: dict) -> str:
         if value:
             return value
     return ""
-
-
-def _links(labels: dict) -> str:
-    parts = []
-    if PROMETHEUS_EXTERNAL_URL:
-        alertname = labels.get("alertname")
-        if alertname:
-            query = quote(f'ALERTS{{alertname="{alertname}"}}')
-            parts.append(f"[Prometheus]({PROMETHEUS_EXTERNAL_URL}/graph?g0.expr={query}&g0.tab=1)")
-        else:
-            parts.append(f"[Prometheus]({PROMETHEUS_EXTERNAL_URL}/alerts)")
-    if GRAFANA_EXTERNAL_URL:
-        parts.append(f"[Grafana]({GRAFANA_EXTERNAL_URL})")
-    return " · ".join(parts)
 
 
 def build_embed(alert: dict) -> dict:
@@ -123,10 +106,6 @@ def build_embed(alert: dict) -> dict:
             fields.append({"name": "Inicio", "value": f"<t:{ts}:R>", "inline": True})
         except (ValueError, OSError):
             pass
-
-    links = _links(labels)
-    if links:
-        fields.append({"name": "Enlaces", "value": links, "inline": False})
 
     embed = {
         "title": title,

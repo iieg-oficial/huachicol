@@ -47,12 +47,11 @@ scrape_configs:
           - '/etc/prometheus/targets/projects.json'
         refresh_interval: 30s
 
-  - job_name: 'minio'
-    metrics_path: /minio/v2/metrics/cluster
-    bearer_token_file: /etc/prometheus/targets/minio-token
+  - job_name: 'acervo-seaweedfs'
+    metrics_path: /metrics
     file_sd_configs:
       - files:
-          - '/etc/prometheus/targets/minio.json'
+          - '/etc/prometheus/targets/acervo-seaweedfs.json'
         refresh_interval: 30s
 
   # --- Metricas de host (node-exporter) por servidor ---

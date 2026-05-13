@@ -14,6 +14,18 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.17.4] - 2026-05-13
+
+### Agregado
+- **`MAPALAB_BACKEND_TARGET=mapalab-backend-1:8000` y `MARIACHI_BACKEND_TARGET=mariachi-api:8000`** activados. Ambos proyectos ya exponen `/metrics` (implementado a mano en `app/metrics.py` y `app/api/metrics.py` respectivamente, sin `prometheus-fastapi-instrumentator`). Targets verificados UP en `http://localhost:9090/api/v1/targets`.
+  - **Métricas que exponen son de negocio** (counters/histograms con prefijo `mapalab_*` y `mariachi_*`: requests al árbol, descargas, embebidos, logins, escrituras de capas, etc.). NO incluyen `http_request_duration_seconds` ni `http_requests_total{status_code=~"5.."}`, por lo que las reglas `HighLatency` y `HighErrorRate` en `prometheus/rules/alerts.yml` **no se disparan** para estos servicios. La regla `ServiceDown` (`up == 0`) sí funciona.
+  - Para habilitar alertas estándar de latencia/errores 5xx en estos backends habría que instrumentar middlewares HTTP adicionales en sus apps FastAPI (issue pendiente, no crítico).
+
+### Cambiado
+- `docs/alert-rules.md`: aclarado que mapalab/mariachi exponen métricas de negocio pero no de HTTP estándar, y que `HighLatency`/`HighErrorRate` quedan inactivas para ellos.
+
+---
+
 ## [1.17.3] - 2026-05-13
 
 ### Removido

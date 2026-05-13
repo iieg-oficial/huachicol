@@ -1,0 +1,73 @@
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+loki.write "default" {
+	endpoint {
+		url = sys.env("LOKI_URL") + "/loki/api/v1/push"
+	}
+	external_labels = {
+		server = sys.env("SERVER_NAME"),
+	}
+}
+
+discovery.docker "containers" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "30s"
+}
+
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container_name"
+	}
+}
+
+loki.source.docker "containers" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.containers.output
+	forward_to = [loki.process.docker.receiver]
+	labels     = {
+		job = "docker",
+	}
+}
+
+loki.process "docker" {
+	forward_to = [loki.write.default.receiver]
+}
+
+local.file_match "syslog" {
+	path_targets = [{
+		__path__ = "/var/log/syslog",
+		job      = "syslog",
+	}]
+}
+
+loki.source.file "syslog" {
+	targets    = local.file_match.syslog.targets
+	forward_to = [loki.write.default.receiver]
+}
+
+prometheus.exporter.unix "host" {
+	rootfs_path = "/rootfs"
+	procfs_path = "/host/proc"
+	sysfs_path  = "/host/sys"
+
+	filesystem {
+		mount_points_exclude = "^/(sys|proc|dev|host|etc)($|/)"
+		fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|tmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+		mount_timeout        = "5s"
+	}
+
+	netclass {
+		ignored_devices = "^(veth.*|cali.*|[a-f0-9]{15})$"
+	}
+
+	netdev {
+		device_exclude = "^(veth.*|cali.*|[a-f0-9]{15})$"
+	}
+}

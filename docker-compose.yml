@@ -49,6 +49,10 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS}
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_FEATURE_TOGGLES_DISABLE: "preinstallAutoUpdate,dashgpt"
+      GF_PLUGINS_DISABLE_PLUGINS: "grafana-exploretraces-app,grafana-lokiexplore-app,grafana-metricsdrilldown-app,grafana-pyroscope-app"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/general/home.json"
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
@@ -100,8 +104,10 @@ services:
     restart: unless-stopped
     environment:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+    networks:
+      - monitoring
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 9094), timeout=3).close()"]
       interval: 30s
       timeout: 10s
       retries: 3

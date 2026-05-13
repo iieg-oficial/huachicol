@@ -2,5 +2,9 @@
   {
     "targets": ["cadvisor:8080"],
     "labels": { "server": "monitoring" }
+  },
+  {
+    "targets": ["10.13.201.117:8080"],
+    "labels": { "server": "dataengine" }
   }
 ]

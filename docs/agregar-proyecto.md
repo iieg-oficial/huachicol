@@ -125,6 +125,7 @@ Resumen rapido:
 | `URLSCHIQUITAS_BACKEND_TARGET` | urlschiquitas | backend |
 | `URLSCHIQUITAS_POSTGRES_TARGET` | urlschiquitas | postgres |
 | `MAPALAB_BACKEND_TARGET` | mapalab | backend |
+| `MARIACHI_BACKEND_TARGET` | mariachi | backend |
 | `GATEWAY_NGINX_TARGET` | gateway-hub | nginx |
 | `DATAENGINE_POSTGRES_TARGET` | dataengine | postgres |
 | `ACERVO_MINIO_TARGET` | acervo | minio |

@@ -25,6 +25,9 @@ add_target() {
     fi
 }
 
+ALLOY_NODE_PATH='/api/v0/component/prometheus.exporter.unix.host/metrics'
+ALLOY_PORT=12345
+
 # --- node-exporter targets ---
 FIRST=false
 {
@@ -34,11 +37,12 @@ FIRST=false
     MARIACHI_IP="${MARIACHI_SERVER_IP:-}"
     GEOSERVER_IP="${GEOSERVER_SERVER_IP:-}"
     DATAENGINE_IP="${DATAENGINE_SERVER_IP:-}"
-    add_target "${PORTAL_IP:+${PORTAL_IP}:9100}" "server" "portal"
-    add_target "${MAPALAB_IP:+${MAPALAB_IP}:9100}" "server" "mapalab"
-    add_target "${MARIACHI_IP:+${MARIACHI_IP}:9100}" "server" "mariachi"
-    add_target "${GEOSERVER_IP:+${GEOSERVER_IP}:9100}" "server" "geoserver"
-    add_target "${DATAENGINE_IP:+${DATAENGINE_IP}:9100}" "server" "dataengine"
+    REMOTE_PATH_EXTRA=", \"__metrics_path__\": \"${ALLOY_NODE_PATH}\""
+    add_target "${PORTAL_IP:+${PORTAL_IP}:${ALLOY_PORT}}" "server" "portal" "${REMOTE_PATH_EXTRA}"
+    add_target "${MAPALAB_IP:+${MAPALAB_IP}:${ALLOY_PORT}}" "server" "mapalab" "${REMOTE_PATH_EXTRA}"
+    add_target "${MARIACHI_IP:+${MARIACHI_IP}:${ALLOY_PORT}}" "server" "mariachi" "${REMOTE_PATH_EXTRA}"
+    add_target "${GEOSERVER_IP:+${GEOSERVER_IP}:${ALLOY_PORT}}" "server" "geoserver" "${REMOTE_PATH_EXTRA}"
+    add_target "${DATAENGINE_IP:+${DATAENGINE_IP}:${ALLOY_PORT}}" "server" "dataengine" "${REMOTE_PATH_EXTRA}"
     printf '\n]\n'
 } > "${TARGETS_DIR}/node-exporter.json"
 echo "Generated node-exporter.json"
@@ -63,6 +67,7 @@ FIRST=true
     add_target "${URLSCHIQUITAS_BACKEND_TARGET:-}" "project" "urlschiquitas" ', "service": "backend"'
     add_target "${URLSCHIQUITAS_POSTGRES_TARGET:-}" "project" "urlschiquitas" ', "service": "postgres"'
     add_target "${MAPALAB_BACKEND_TARGET:-}" "project" "mapalab" ', "service": "backend"'
+    add_target "${MARIACHI_BACKEND_TARGET:-}" "project" "mariachi" ', "service": "backend"'
     add_target "${GATEWAY_NGINX_TARGET:-}" "project" "gateway-hub" ', "service": "nginx"'
     printf '\n]\n'
 } > "${TARGETS_DIR}/projects.json"

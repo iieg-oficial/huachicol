@@ -1,5 +1,6 @@
 .PHONY: help start stop restart logs clean status \
        agent-start agent-stop agent-restart agent-logs agent-clean agent-status \
+       alloy-start alloy-stop alloy-restart alloy-logs alloy-status \
        network targets backup backup-list restore backup-cron-install backup-cron-remove
 
 NETWORK_NAME := iieg-network
@@ -27,6 +28,13 @@ help:
 	@echo "    make agent-status               - Ver estado del agente"
 	@echo "    make agent-clean                - Detener agente y eliminar datos"
 	@echo "    Profiles: telemetry, cadvisor, postgres"
+	@echo ""
+	@echo "  Alloy local (logs del propio servidor monitoring):"
+	@echo "    make alloy-start   - Iniciar alloy local"
+	@echo "    make alloy-stop    - Detener alloy local"
+	@echo "    make alloy-restart - Reiniciar alloy local"
+	@echo "    make alloy-logs    - Ver logs de alloy local"
+	@echo "    make alloy-status  - Ver estado de alloy local"
 	@echo ""
 	@echo "  Backups:"
 	@echo "    make backup              - Ejecutar backup manual a MinIO"
@@ -107,6 +115,24 @@ agent-status:
 agent-clean:
 	$(AGENT_CMD) down -v
 	@echo "Datos del agente eliminados"
+
+# --- Alloy local ---
+
+alloy-start:
+	docker compose up -d alloy
+	@echo "Alloy local iniciado"
+
+alloy-stop:
+	docker compose stop alloy
+
+alloy-restart:
+	docker compose restart alloy
+
+alloy-logs:
+	docker compose logs -f alloy
+
+alloy-status:
+	@docker compose ps alloy
 
 # --- Backups ---
 

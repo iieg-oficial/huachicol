@@ -40,6 +40,13 @@ scrape_configs:
         labels:
           service: 'alertmanager'
 
+  - job_name: 'alloy'
+    static_configs:
+      - targets: ['alloy:12345']
+        labels:
+          service: 'alloy'
+          server: 'monitoring'
+
   # --- Proyectos (generados desde .env por generate-targets.sh) ---
   - job_name: 'projects'
     file_sd_configs:

@@ -52,7 +52,7 @@ services:
       GF_PLUGINS_PREINSTALL_DISABLED: "true"
       GF_FEATURE_TOGGLES_DISABLE: "preinstallAutoUpdate,dashgpt"
       GF_PLUGINS_DISABLE_PLUGINS: "grafana-exploretraces-app,grafana-lokiexplore-app,grafana-metricsdrilldown-app,grafana-pyroscope-app"
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/general/home.json"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/general/ecosistema-iieg.json"
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
@@ -143,6 +143,44 @@ services:
           memory: 1G
           cpus: '1.0'
 
+  alloy:
+    image: grafana/alloy:v1.16.1
+    container_name: alloy
+    restart: unless-stopped
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      LOKI_URL: http://loki:3100
+      SERVER_NAME: monitoring
+    volumes:
+      - ./agent/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - monitoring
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:12345/-/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
   node-exporter:
     image: prom/node-exporter:v1.8.2
     container_name: node-exporter
@@ -162,7 +200,7 @@ services:
     networks:
       - monitoring
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9100/huachicol"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9100/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -250,3 +288,4 @@ volumes:
   grafana_data:
   alertmanager_data:
   loki_data:
+  alloy_data:

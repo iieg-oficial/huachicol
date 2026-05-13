@@ -14,6 +14,34 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.19.0] - 2026-05-13
+
+### Agregado
+- **Dashboard `Ecosistema IIEG`** (`grafana/dashboards/general/ecosistema-iieg.json`, uid `iieg-ecosystem`, en raíz): fusión de los antiguos `home.json` y `containers.json` en una vista única organizada en 12 secciones — Resumen general, Estado de servicios, Bases de datos, Distribución de contenedores, Gateway/Red, Top consumo, Estado de contenedores, Inventario detallado, Recursos del servidor, Tendencias de contenedores, Actividad de logs, Logs y alertas. Variables: `DS_PROMETHEUS`, `DS_LOKI` y `container` (multi, includeAll) que filtra todos los paneles por-contenedor.
+- **Servicio `alloy` en el stack principal** (`docker-compose.yml`): reutiliza `agent/config.alloy` con `LOKI_URL=http://loki:3100` y `SERVER_NAME=monitoring`. Recolecta logs de todos los contenedores del propio servidor de monitoring y los envía a Loki. Funciona igual en local y en producción.
+- **Job `alloy` en `prometheus.yml`**: scrappea `alloy:12345` con etiquetas `service=alloy, server=monitoring` para observar salud del agente.
+- **Targets `alloy-start`/`-stop`/`-restart`/`-logs`/`-status` en `Makefile`** para gestionar el alloy local sin recordar comandos `docker compose`.
+- **Loki `reject_old_samples_max_age: 744h`** (`loki/loki-config.yml`): alinea la ventana de aceptación de muestras con `retention_period`, permitiendo backfill del historial del docker daemon en el primer arranque del alloy.
+- **Alias `postgres-exporter` en `iieg-network`** (`agent/docker-compose.yml`): el postgres-exporter del agent expone alias DNS estable resolvible desde Prometheus, evitando depender de container_name entre compose projects. Esto permite levantar `make agent-start PROFILES=postgres` con DSN apuntando a `dataengine-primary` local y que Prometheus lo descubra como `postgres-exporter:9187`.
+
+### Cambiado
+- **`GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH`** apunta ahora a `ecosistema-iieg.json` (antes `home.json`).
+- **Healthcheck de `node-exporter`** cambiado de `wget --spider http://localhost:9100/huachicol` a `http://localhost:9100/`. La ruta `/huachicol` devuelve ~163KB de métricas; `wget --spider` cerraba antes de leer el body, causando spam continuo de `write: connection reset by peer` en los logs. La ruta `/` retorna ~150 bytes de HTML y el healthcheck termina limpio.
+- **Provider `infrastructure` removido de `grafana/provisioning/dashboards/dashboards.yml`** y carpeta `grafana/dashboards/infrastructure/` eliminada. Todo lo que estaba ahí quedó incluido en `ecosistema-iieg.json`.
+- **Panel "Proyectos" del ecosistema**: query `up{job="minio"}` reemplazada por `up{job="acervo-seaweedfs"}` (el job se renombró en 6640395 y dejaba "acervo" sin reportar).
+- **Panel "Monitoreo" del ecosistema**: añadido `alloy` al filtro de servicios del stack.
+
+### Eliminado
+- `grafana/dashboards/general/home.json` y `grafana/dashboards/general/gateway-subroutes.json`: contenido absorbido por `ecosistema-iieg.json` o ya no necesario.
+- `grafana/dashboards/infrastructure/containers.json` y la carpeta `infrastructure/`.
+- Data links de `Container` en las dos tablas del ecosistema: causaban `Cannot read properties of undefined (reading 'scopedVars')` en `TablePanel.tsx` con Grafana 12 cuando la celda interpolaba `${__value.raw}`. Los logs siguen accesibles desde Explore manualmente.
+
+### Notas operativas
+- **Bind mounts y edición de archivos**: Grafana puede quedarse con la versión vieja de `dashboards.yml` si el archivo se edita con herramientas que crean un inode nuevo (Edit, vim sin `:set backupcopy=yes`, etc.). El bind mount apunta al inode original. Solución: `docker compose up -d --force-recreate grafana` después de editar archivos individuales montados.
+- **Series stale tras quitar targets**: al vaciar `DATAENGINE_*` del `.env` quedaron series `up{job="postgres-exporter", project="dataengine"}=0` reportando DOWN por la retención de Prometheus. Para limpiar: `curl -sX POST "http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=<selector>"` + `clean_tombstones`. Requiere `--web.enable-admin-api` (ya habilitado).
+
+---
+
 ## [1.18.0] - 2026-05-13
 
 ### Agregado

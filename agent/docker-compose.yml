@@ -67,9 +67,11 @@ services:
     ports:
       - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
     networks:
-      - default
-      - iieg-network
-      - dataengine-network
+      default:
+      iieg-network:
+        aliases:
+          - postgres-exporter
+      dataengine-network:
     profiles:
       - postgres
 

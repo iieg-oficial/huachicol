@@ -13,9 +13,12 @@ groups:
 
       - alert: HighLatency
         expr: |
-          rate(http_request_duration_seconds_sum[5m])
-          /
-          rate(http_request_duration_seconds_count[5m]) > 1
+          (
+            rate(http_request_duration_seconds_sum[5m])
+            /
+            rate(http_request_duration_seconds_count[5m])
+          ) > 1
+          and rate(http_request_duration_seconds_count[5m]) > 0
         for: 5m
         labels:
           severity: warning
@@ -25,9 +28,12 @@ groups:
 
       - alert: HighErrorRate
         expr: |
-          rate(http_requests_total{status_code=~"5.."}[5m])
-          /
-          rate(http_requests_total[5m]) > 0.05
+          (
+            rate(http_requests_total{status_code=~"5.."}[5m])
+            /
+            rate(http_requests_total[5m])
+          ) > 0.05
+          and rate(http_requests_total[5m]) > 0
         for: 2m
         labels:
           severity: critical
@@ -55,6 +61,19 @@ groups:
         annotations:
           summary: "Espacio disponible en disco por debajo del 10% en {{ $labels.instance }}."
           description: "La partición raíz de {{ $labels.instance }} tiene menos del 10% de espacio libre."
+
+  - name: ecosystem_integration_alerts
+    interval: 30s
+    rules:
+      - alert: MariachiTreeNotifyFailures
+        expr: increase(mariachi_tree_notify_failed_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: mariachi
+        annotations:
+          summary: "Mariachi no logra notificar refresh-cache a mapalab."
+          description: "El contador mariachi_tree_notify_failed_total se incrementó en los últimos 10 min. Causas habituales: MAPALAB_INTERNAL_TOKEN distinto en mariachi/.env y mapalab/.env, mapalab-backend caído, o red iieg-network rota. El tree de capas queda stale hasta el cron 04:00 UTC."
 
   - name: database_alerts
     interval: 30s

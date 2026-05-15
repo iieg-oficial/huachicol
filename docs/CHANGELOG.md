@@ -14,6 +14,20 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.19.2] - 2026-05-15
+
+### Healthcheck de alloy y guardas en alertas HTTP
+
+Dos fixes independientes que estaban generando ruido en operacion.
+
+#### Cambiado
+
+- **`docker-compose.yml`** (servicio `alloy`, healthcheck): test cambiado de `wget --spider http://localhost:12345/-/ready` a `bash -c 'exec 3<>/dev/tcp/127.0.0.1/12345 && exec 3<&-'`. La imagen `grafana/alloy:v1.16.1` **no incluye** `wget` (`bash`, `apt`, `b2sum` y el binario `alloy` si estan, pero no curl/wget). Resultado del healthcheck previo: `OCI runtime exec failed ... exec: "wget": executable file not found in $PATH` y container reportado `unhealthy` aunque alloy funcionaba normal. La nueva prueba usa el redirector `/dev/tcp` de bash (presente en la imagen) para verificar que el puerto 12345 acepta conexiones. Confirmado: alloy ahora reporta `healthy`.
+
+- **`prometheus/rules/alerts.yml`** (`HighLatency`, `HighErrorRate`): agregada guarda `and rate(...count[5m]) > 0` al final de la expresion. Cuando `count==0` durante una ventana (servicio idle), `rate(sum)/rate(count)` produce `NaN`/`+Inf`, y la comparacion `> 1` o `> 0.05` evalua como `True` para ese label set — la regla disparaba `HighLatency` con `description: "... es +Inf en mariachi"` cada `repeat_interval` (12h) hacia Discord. Con la guarda, la alerta solo se evalua cuando hay trafico real. Validado tras `kill -HUP` a prometheus: 0 alertas activas en alertmanager.
+
+---
+
 ## [1.19.1] - 2026-05-13
 
 ### Arreglado

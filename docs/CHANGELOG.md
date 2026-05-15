@@ -14,6 +14,16 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.19.5] - 2026-05-15
+
+### Docs alineados: `MinIO` se engloba como `Acervo`
+
+#### Cambiado
+
+- **`docs/configuracion-env.md`** (seccion "Backups a Acervo (S3)"): texto simplificado. Se quito la nota "Acervo migro internamente de MinIO a SeaweedFS en acervo 1.22.0..." (contexto historico que ya vive en `acervo/docs/CHANGELOG.md`). Las variables conservan el prefijo `MINIO_` por compatibilidad con `scripts/backup.sh` (que usa `mc`); la descripcion del endpoint ya no compara con "antes 9000 en MinIO".
+
+---
+
 ## [1.19.4] - 2026-05-15
 
 ### Documentacion sincronizada con SeaweedFS y alertas

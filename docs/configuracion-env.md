@@ -72,11 +72,11 @@ El formato es `HOST:PUERTO`. El host es la IP del servidor donde corre el proyec
 
 ## Backups a Acervo (S3)
 
-Las variables conservan el prefijo `MINIO_` por compatibilidad con `scripts/backup.sh` (usa `mc`, cliente S3-compatible). Acervo migro internamente de MinIO a SeaweedFS en `acervo 1.22.0`, pero el endpoint S3 y la sintaxis del cliente no cambian.
+Las variables conservan el prefijo `MINIO_` por compatibilidad historica con `scripts/backup.sh` (usa `mc`, cliente S3-compatible).
 
 | Variable | Como obtenerla |
 |---|---|
-| `MINIO_ENDPOINT` | URL interna de Acervo (ej: `http://IP_ACERVO:8333` — puerto SeaweedFS S3, antes 9000 en MinIO) |
+| `MINIO_ENDPOINT` | URL interna de Acervo (ej: `http://IP_ACERVO:8333`) |
 | `MINIO_BUCKET_USER` | Access key del usuario `huachicol-user` en `acervo/config/identities.json` |
 | `MINIO_BUCKET_PASSWORD` | Secret key del mismo usuario |
 

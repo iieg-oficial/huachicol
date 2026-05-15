@@ -14,6 +14,41 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.19.4] - 2026-05-15
+
+### Documentacion sincronizada con SeaweedFS y alertas
+
+#### Cambiado
+
+- **`docs/configuracion-env.md`** (seccion "Backups a Acervo (S3)"): renombrada de "Backups a MinIO". Aclara que las variables `MINIO_*` se conservan por compatibilidad con `mc` pero apuntan a Acervo (SeaweedFS) en puerto `:8333`. Comando `make init-buckets BUCKET=huachicol` (ya no existe en acervo) reemplazado por la referencia al flujo nuevo: `acervo/config/identities.json`.
+- **`docs/context.md`** (seccion `service_alerts`): documentadas las guardas `count > 0` en `HighLatency`/`HighErrorRate` (desde 1.19.2) + agregado nuevo grupo `ecosystem_integration_alerts.MariachiTreeNotifyFailures` (desde 1.19.3).
+- **`docs/context.md`** (tabla "Endpoints del ecosistema"): linea de `Acervo Console` removida (servicio inexistente desde acervo 1.22.0); puerto de `Acervo API` corregido de `9000` (MinIO) a `8333` (SeaweedFS).
+- **`docs/context.md`** (seccion "Acervo (backups)"): clarificada la fuente de las credenciales (`acervo/config/identities.json` con `actions: ["Read:huachicol","Write:huachicol"]`).
+- **`docs/context.md`** (notas de gateway): "VPN-only" ya no menciona Acervo Console; bot-protection mencionada como "WFS-T bloqueado (POST + query string)" reflejando el cambio de gateway-hub 1.24.15.
+
+---
+
+## [1.19.3] - 2026-05-15
+
+### Alerta para fallos del notifier mariachi → mapalab
+
+Nuevo grupo `ecosystem_integration_alerts` con la regla `MariachiTreeNotifyFailures`. Cierra una clase de fallos silenciosos del ecosistema: si `MAPALAB_INTERNAL_TOKEN` queda distinto entre `mariachi/.env` y `mapalab/.env` (o si mapalab-backend cae, o iieg-network se rompe), el tree de capas se queda stale hasta el cron 04:00 UTC y no había forma de enterarse antes.
+
+#### Agregado
+
+- **`prometheus/rules/alerts.yml`** (`ecosystem_integration_alerts.MariachiTreeNotifyFailures`):
+  - `expr: increase(mariachi_tree_notify_failed_total[10m]) > 0`
+  - `for: 1m`
+  - severity `warning`, service `mariachi`
+  - description menciona las 3 causas habituales (token desalineado, mapalab-backend caído, red rota) para acelerar diagnóstico desde Discord.
+- Se usa `increase()` (no `rate()`) porque el counter solo se materializa en `/metrics` tras el primer incremento — `rate(...) > 0` con la serie inexistente no dispararía.
+
+#### Notas
+
+- Coordinado con `mariachi 1.0.3+` (counter `mariachi_tree_notify_failed_total` ya expuesto) y `mapalab 1.28.5+` (auth interna que es la causa más probable del fallo).
+
+---
+
 ## [1.19.2] - 2026-05-15
 
 ### Healthcheck de alloy y guardas en alertas HTTP

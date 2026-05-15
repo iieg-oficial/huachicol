@@ -134,8 +134,7 @@ huachicol/
 |---|---|---|---|
 | Portal IIEG | `/`, `/api/`, `/administrador/` | host.docker.internal:8000 | Publico |
 | MapaLab | `/mapalab/` | mapalab-staging-nginx-1:80 | Publico |
-| Acervo API | `/acervo/` | host.docker.internal:9000 | Publico |
-| Acervo Console | `/acervo/console/` | host.docker.internal:9001 | VPN-only |
+| Acervo API | `/acervo/` | host.docker.internal:8333 (SeaweedFS S3) | Publico |
 | GeoServer OWS/WFS/WCS | `/geoserver/ows`, etc | host.docker.internal:8080 | Publico (cache+validacion) |
 | GeoServer Admin | `/geoserver/web`, `/geoserver/rest` | host.docker.internal:8080 | VPN-only |
 | MARIACHI | `/mariachi/` | host.docker.internal:*pendiente* | VPN-only |
@@ -175,10 +174,13 @@ Ver `docs/agregar-proyecto.md` para instrucciones detalladas.
 
 ### service_alerts
 - **ServiceDown** (critical, 1m): `up == 0`
-- **HighLatency** (warning, 5m): latencia > 1s
-- **HighErrorRate** (critical, 2m): errores 5xx > 5%
+- **HighLatency** (warning, 5m): latencia > 1s (con guarda `count > 0` desde 1.19.2 para evitar `+Inf` cuando el servicio esta idle)
+- **HighErrorRate** (critical, 2m): errores 5xx > 5% (con guarda `total > 0` desde 1.19.2)
 - **HighMemoryUsage** (warning, 5m): memoria > 90%
 - **DiskSpaceLow** (warning, 5m): disco < 10%
+
+### ecosystem_integration_alerts (desde 1.19.3)
+- **MariachiTreeNotifyFailures** (warning, 1m): `increase(mariachi_tree_notify_failed_total[10m]) > 0`. Detecta drift de `MAPALAB_INTERNAL_TOKEN` entre mariachi y mapalab, caida de `mapalab-backend` o red rota.
 
 ### database_alerts
 - **PostgreSQLDown** (critical, 1m): `pg_up == 0`
@@ -208,15 +210,15 @@ Ver `docs/agregar-proyecto.md` para instrucciones detalladas.
 - **MinIO:** Metricas protegidas con JWT (bearer_token_file)
 - **Plan futuro:** Migrar a Authentik (ver `docs/pendientes/authentik.md`)
 
-### MinIO / Acervo (backups)
-- Huachicol usa credenciales de `huachicol-user` (generado por `init-buckets` en Acervo), con policy scoped al bucket `huachicol` unicamente.
-- Las variables `MINIO_BUCKET_USER` y `MINIO_BUCKET_PASSWORD` en el `.env` **no son credenciales de admin**.
+### Acervo (backups, S3-compatible via SeaweedFS)
+- Huachicol usa credenciales de `huachicol-user` (definido en `acervo/config/identities.json`), con `actions: ["Read:huachicol","Write:huachicol"]` — scoped al bucket `huachicol`.
+- Las variables `MINIO_BUCKET_USER` y `MINIO_BUCKET_PASSWORD` en el `.env` **no son credenciales de admin**. El prefijo `MINIO_` se conserva porque el script `backup.sh` usa el cliente `mc` (MinIO Client) que es S3-compatible.
 
 ### Gateway
 - TLS 1.2+ con cifrados ECDHE, HSTS 1 ano
 - Rate limiting: 10 req/s general, 10 req/s API, 10 req/s GeoServer
-- VPN-only: Grafana, GeoServer admin, MARIACHI, Acervo Console
-- Bot blocking, referrer validation, transaction blocking en GeoServer
+- VPN-only: Grafana, GeoServer admin, MARIACHI
+- Bot blocking, referrer validation, WFS-T bloqueado (POST + query string) en GeoServer
 
 ---
 
@@ -373,9 +375,9 @@ make backup-cron-install / backup-cron-remove       # Cron semanal (domingos, 3A
 - Loki tiene `retention_enabled: true` en el compactor — la retencion de 744h si se aplica.
 - Todas las imagenes Docker estan pinneadas a versiones estables especificas. cAdvisor requiere v0.55.1+ para compatibilidad con Docker 29 + storage driver `overlayfs` + cgroups v2.
 - Acervo (SeaweedFS) expone metricas en `/metrics` sin auth, en el puerto configurado con `-metricsPort` (default `acervo-seaweedfs:9091`). Se configura via `ACERVO_METRICS_TARGET` del `.env` de huachicol. Ver `docs/agregar-proyecto.md`.
-- Los backups usan credenciales de `huachicol-user` (generado por `make init-buckets` en Acervo), con acceso limitado al bucket `huachicol`. El bucket se crea desde Acervo, no desde huachicol.
+- Los backups usan credenciales de `huachicol-user` definido en `acervo/config/identities.json` (SeaweedFS), con `actions: ["Read:huachicol","Write:huachicol"]` scoped al bucket `huachicol`. El bucket y el usuario se gestionan desde Acervo (`scripts/init-seaweedfs.sh` + `make restart`), no desde huachicol.
 - cAdvisor y postgres-exporter del agente sirven en `/huachicol`. Alloy del agente expone su HTTP server en `:12345`; las metricas de host se scrapean en `/api/v0/component/prometheus.exporter.unix.host/metrics` (override `__metrics_path__` por target en file_sd).
 - Profiles del agente: `all` (alloy + cadvisor), `telemetry` (solo alloy), `cadvisor`, `postgres`. En servidores donde gateway ya empuja logs propios, usar `PROFILES="cadvisor"` para evitar duplicados de Docker logs.
-- Los containers del agente usan prefijo `huachicol-` (ej: `huachicol-node-exporter`, `huachicol-promtail`) para evitar conflictos de nombre con otros proyectos en el mismo servidor.
+- Los containers del agente usan prefijo `huachicol-` (ej: `huachicol-alloy`, `huachicol-cadvisor`) para evitar conflictos de nombre con otros proyectos en el mismo servidor.
 - postgres-exporter requiere `POSTGRES_DSN` en el `.env` del agente. Se conecta a `dataengine-network` e `iieg-network`.
 - cAdvisor usa `-store_container_labels=true` para exportar labels de Docker (name, image, compose project). El volumen `/var/run` se monta read-write para acceso al socket de Docker.

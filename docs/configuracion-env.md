@@ -70,15 +70,17 @@ El formato es `HOST:PUERTO`. El host es la IP del servidor donde corre el proyec
 
 ---
 
-## Backups a MinIO
+## Backups a Acervo (S3)
+
+Las variables conservan el prefijo `MINIO_` por compatibilidad con `scripts/backup.sh` (usa `mc`, cliente S3-compatible). Acervo migro internamente de MinIO a SeaweedFS en `acervo 1.22.0`, pero el endpoint S3 y la sintaxis del cliente no cambian.
 
 | Variable | Como obtenerla |
 |---|---|
-| `MINIO_ENDPOINT` | URL interna de MinIO (ej: `http://IP_ACERVO:9000`) |
-| `MINIO_BUCKET_USER` | Lo imprime `make init-buckets BUCKET=huachicol` en Acervo |
-| `MINIO_BUCKET_PASSWORD` | Lo imprime el mismo comando |
+| `MINIO_ENDPOINT` | URL interna de Acervo (ej: `http://IP_ACERVO:8333` — puerto SeaweedFS S3, antes 9000 en MinIO) |
+| `MINIO_BUCKET_USER` | Access key del usuario `huachicol-user` en `acervo/config/identities.json` |
+| `MINIO_BUCKET_PASSWORD` | Secret key del mismo usuario |
 
-> Las credenciales son del usuario `huachicol-user`, con acceso limitado al bucket `huachicol`. NO usar credenciales de administrador.
+> Las credenciales son del usuario `huachicol-user`, con acceso limitado al bucket `huachicol`. NO usar credenciales de administrador. Para generar/rotar, editar `acervo/config/identities.json` y reiniciar `acervo-seaweedfs`.
 
 ---
 

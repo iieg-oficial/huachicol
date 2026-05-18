@@ -28,6 +28,8 @@ add_target() {
 ALLOY_NODE_PATH='/api/v0/component/prometheus.exporter.unix.host/metrics'
 ALLOY_PORT=12345
 
+SINGLE_VM_DATAENGINE_LOCAL="${SINGLE_VM_DATAENGINE_LOCAL:-false}"
+
 # --- node-exporter targets ---
 FIRST=false
 {
@@ -43,6 +45,9 @@ FIRST=false
     add_target "${MARIACHI_IP:+${MARIACHI_IP}:${ALLOY_PORT}}" "server" "mariachi" "${REMOTE_PATH_EXTRA}"
     add_target "${GEOSERVER_IP:+${GEOSERVER_IP}:${ALLOY_PORT}}" "server" "geoserver" "${REMOTE_PATH_EXTRA}"
     add_target "${DATAENGINE_IP:+${DATAENGINE_IP}:${ALLOY_PORT}}" "server" "dataengine" "${REMOTE_PATH_EXTRA}"
+    if [ "$SINGLE_VM_DATAENGINE_LOCAL" = "true" ] || [ "$SINGLE_VM_DATAENGINE_LOCAL" = "1" ]; then
+        add_target "node-exporter:9100" "server" "dataengine"
+    fi
     printf '\n]\n'
 } > "${TARGETS_DIR}/node-exporter.json"
 echo "Generated node-exporter.json"
@@ -56,6 +61,9 @@ FIRST=false
     add_target "${MARIACHI_IP:+${MARIACHI_IP}:8080}" "server" "mariachi"
     add_target "${GEOSERVER_IP:+${GEOSERVER_IP}:8080}" "server" "geoserver"
     add_target "${DATAENGINE_IP:+${DATAENGINE_IP}:8080}" "server" "dataengine"
+    if [ "$SINGLE_VM_DATAENGINE_LOCAL" = "true" ] || [ "$SINGLE_VM_DATAENGINE_LOCAL" = "1" ]; then
+        add_target "cadvisor:8080" "server" "dataengine"
+    fi
     printf '\n]\n'
 } > "${TARGETS_DIR}/cadvisor.json"
 echo "Generated cadvisor.json"
@@ -75,7 +83,7 @@ echo "Generated projects.json"
 FIRST=true
 {
     printf '['
-    add_target "${DATAENGINE_POSTGRES_TARGET:-}" "project" "dataengine" ', "service": "postgres"'
+    add_target "${DATAENGINE_POSTGRES_TARGET:-}" "project" "dataengine" ', "service": "postgres", "server": "dataengine"'
     printf '\n]\n'
 } > "${TARGETS_DIR}/postgres-exporter.json"
 echo "Generated postgres-exporter.json"

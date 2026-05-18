@@ -14,6 +14,45 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.20.2] - 2026-05-18
+
+### Targets `server=dataengine` visibles en staging single-VM
+
+En la VM `mapalab` (staging compartido donde dataengine corre co-residente con el monitoring stack), los dashboards y queries que filtraban por `server="dataengine"` no encontraban datos: las metricas del host y de los containers existian pero llegaban con label `server="monitoring"` (la del agente local). El target de postgres-exporter tampoco tenia `server=dataengine` (solo `project=dataengine, service=postgres`).
+
+#### Agregado
+
+- **`.env.example`**: variable `SINGLE_VM_DATAENGINE_LOCAL` (default `false`). Cuando es `true`, `generate-targets.sh` agrega 2 targets locales adicionales con label `server=dataengine`:
+  - `node-exporter:9100` (duplica el scrape del agente local, pero con label distinta)
+  - `cadvisor:8080` (igual)
+
+#### Cambiado
+
+- **`scripts/generate-targets.sh`**: agregada lectura de `SINGLE_VM_DATAENGINE_LOCAL`. Cuando esta `true`/`1`, se anade el target local extra a cada uno de los 2 jobs (`node-exporter`, `cadvisor`). En produccion (var en `false`/ausente) el comportamiento es identico al previo: solo se generan targets remotos para `DATAENGINE_SERVER_IP`.
+- **`scripts/generate-targets.sh`** (postgres-exporter): el target `DATAENGINE_POSTGRES_TARGET` ahora se etiqueta como `project=dataengine, service=postgres, server=dataengine` (antes faltaba `server=dataengine`). Cambio incondicional — el postgres-exporter siempre pertenece logicamente al servidor dataengine, tanto en single-VM como multi-VM.
+
+#### Despliegue
+
+```bash
+cd ~/huachicol
+git pull
+# Solo en staging single-VM:
+echo "SINGLE_VM_DATAENGINE_LOCAL=true" >> .env  # o editar el .env
+make targets                                     # regenera prometheus/targets/*.json
+docker exec prometheus wget -qO- --post-data='' http://localhost:9090/-/reload
+```
+
+Verificar en `/targets` que aparecen 3 series con `server="dataengine"`:
+- `node-exporter` (server=dataengine)
+- `cadvisor` (server=dataengine)
+- `postgres-exporter` (server=dataengine, service=postgres)
+
+#### Notas
+
+En produccion no hace falta cambiar nada (la var no debe agregarse al `.env` de S1). El `DATAENGINE_SERVER_IP` apunta a la IP de S4 y ya genera los 3 targets remotos con la label correcta. Si por error se setea `SINGLE_VM_DATAENGINE_LOCAL=true` en produccion mientras `DATAENGINE_SERVER_IP` tambien apunta a S4, se generarian 2 targets duplicados con label `server=dataengine` (uno apuntando a S4 remoto y otro al cadvisor/node-exporter local del monitoring server) — metricas inconsistentes. Mantener la var solo en staging.
+
+---
+
 ## [1.20.1] - 2026-05-18
 
 ### Bajar consumo de `cadvisor` en VM compartida de staging

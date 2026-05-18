@@ -61,9 +61,6 @@ FIRST=false
     add_target "${MARIACHI_IP:+${MARIACHI_IP}:8080}" "server" "mariachi"
     add_target "${GEOSERVER_IP:+${GEOSERVER_IP}:8080}" "server" "geoserver"
     add_target "${DATAENGINE_IP:+${DATAENGINE_IP}:8080}" "server" "dataengine"
-    if [ "$SINGLE_VM_DATAENGINE_LOCAL" = "true" ] || [ "$SINGLE_VM_DATAENGINE_LOCAL" = "1" ]; then
-        add_target "cadvisor:8080" "server" "dataengine"
-    fi
     printf '\n]\n'
 } > "${TARGETS_DIR}/cadvisor.json"
 echo "Generated cadvisor.json"

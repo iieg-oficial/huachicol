@@ -14,6 +14,27 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.20.3] - 2026-05-18
+
+### Fix: quitar cadvisor de la duplicacion single-VM (etiquetaba 28 containers como dataengine)
+
+En `1.20.2` la flag `SINGLE_VM_DATAENGINE_LOCAL=true` agregaba 2 targets locales con label `server=dataengine`: `node-exporter:9100` y `cadvisor:8080`. El primero es correcto (el host es el mismo, sus metricas si "son del servidor donde corre dataengine"). El segundo no: en single-VM `cadvisor` reporta los ~28 containers de TODO el ecosistema (gateway, mariachi, mapalab, geoserver, huachicol, sieej, version-api sidecars, etc.), no solo los de dataengine. Etiquetar ese scrape como `server=dataengine` metia ruido masivo — un dashboard de "containers en dataengine" mostraba 28 cuando deberian ser ~5 (`dataengine-primary`, `dataengine-jobs`, `dataengine-backup`, `dataengine-pgbouncer` y la propia `huachicol-postgres-exporter` agregada).
+
+#### Cambiado
+
+- **`scripts/generate-targets.sh`**: removido el bloque `if SINGLE_VM_DATAENGINE_LOCAL: add_target cadvisor:8080 server=dataengine` (3 lineas). El target `cadvisor` con label `server=monitoring` sigue scrapeando los 28 containers como siempre; los dashboards que necesiten ver solo containers de dataengine deben filtrar por `name=~"dataengine-.*"` (filtro portable que funciona igual en single-VM y multi-VM).
+
+#### Sigue valido
+
+- `node-exporter:9100` con `server=dataengine` se mantiene (el host es uno solo, no hay contaminacion).
+- `postgres-exporter` con `server=dataengine, service=postgres` se mantiene (solo scrapea metricas de postgres).
+
+#### Removidos del index git
+
+- **`prometheus/targets/cadvisor.json`** y **`prometheus/targets/node-exporter.json`** removidos con `git rm --cached`. Ya estaban en `.gitignore` desde el inicio (junto con los otros `prometheus/targets/*.json`) pero habian quedado trackeados por error antes de que el patron se aplicara. Ahora consistentes con `postgres-exporter.json`, `projects.json`, `acervo-seaweedfs.json` (todos generados por `make targets`).
+
+---
+
 ## [1.20.2] - 2026-05-18
 
 ### Targets `server=dataengine` visibles en staging single-VM

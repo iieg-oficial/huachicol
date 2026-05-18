@@ -1,6 +1,0 @@
-[
-  {
-    "targets": ["cadvisor:8080"],
-    "labels": { "server": "monitoring" }
-  }
-]

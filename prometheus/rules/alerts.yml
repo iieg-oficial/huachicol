@@ -14,17 +14,33 @@ groups:
       - alert: HighLatency
         expr: |
           (
-            rate(http_request_duration_seconds_sum[5m])
+            rate(http_request_duration_seconds_sum{project!="mariachi"}[5m])
             /
-            rate(http_request_duration_seconds_count[5m])
+            rate(http_request_duration_seconds_count{project!="mariachi"}[5m])
           ) > 1
-          and rate(http_request_duration_seconds_count[5m]) > 0
+          and rate(http_request_duration_seconds_count{project!="mariachi"}[5m]) > 0
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Latencia promedio por encima de 1s en {{ $labels.project }}."
           description: "La latencia promedio de los últimos 5 min es {{ $value | humanize }}s en {{ $labels.project }}."
+
+      - alert: HighLatencyMariachi
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, project) (rate(http_request_duration_seconds_bucket{project="mariachi"}[10m]))
+          ) > 3
+          and on (project)
+          sum by (project) (rate(http_request_duration_seconds_count{project="mariachi"}[10m])) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          project: mariachi
+        annotations:
+          summary: "Latencia p95 por encima de 3s en mariachi (CMS admin)."
+          description: "El percentil 95 de los últimos 10 min es {{ $value | humanize }}s con al menos 0.1 req/s sostenidos durante 15 min. Mariachi es panel administrativo de baja frecuencia y tolera picos legítimos (GeoServer, DataEngine, Acervo); esta alerta solo dispara fuera de ese rango."
 
       - alert: HighErrorRate
         expr: |

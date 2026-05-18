@@ -14,6 +14,24 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.20.0] - 2026-05-18
+
+### Endpoint `/ontoy` via sidecar `version-api`
+
+Hasta ahora el stack no exponia ningun endpoint de version: `mariachi` mostraba `1.19.5` hardcoded en `platforms_config.py` y `gateway-hub` ni siquiera tenia una location `/huachicol/ontoy` (respondia 404 al probe). Cada release del stack obligaba a editar `platforms_config.py` a mano.
+
+#### Agregado
+
+- **`version-api/`**: container sidecar (`python:3.13-alpine` + `ontoy_server.py` 47 lineas stdlib, sin deps) que sirve `GET /ontoy` en puerto interno `8088`. Mismo patron que `dataengine/jobs/ontoy_server.py`, `geoserver/version-api/` y `acervo/version-api/`.
+- **`docker-compose.yml`**: servicio `version-api` conectado solo a `iieg-network`. Monta `./VERSION` y `./version-api/html/version.json` read-only. Healthcheck contra `http://127.0.0.1:8088/ontoy`.
+- **`Makefile`**: target `version-json` que regenera `version-api/html/version.json` leyendo `VERSION` y la fecha de `docs/CHANGELOG.md`. Hookeado a `start` y `restart` como prerequisito.
+
+#### Notas
+
+`gateway-hub` debe agregar una location `/huachicol/ontoy` con `proxy_pass` a `huachicol-version-api:8088/ontoy`; `mariachi` debe eliminar el `static_version: "1.19.5"` de `huachicol` en `platforms_config.py`.
+
+---
+
 ## [1.19.5] - 2026-05-15
 
 ### Docs alineados: `MinIO` se engloba como `Acervo`

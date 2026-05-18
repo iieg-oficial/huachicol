@@ -1,7 +1,8 @@
 .PHONY: help start stop restart logs clean status \
        agent-start agent-stop agent-restart agent-logs agent-clean agent-status \
        alloy-start alloy-stop alloy-restart alloy-logs alloy-status \
-       network targets backup backup-list restore backup-cron-install backup-cron-remove
+       network targets backup backup-list restore backup-cron-install backup-cron-remove \
+       version-json
 
 NETWORK_NAME := iieg-network
 AGENT_DIR := agent
@@ -50,6 +51,9 @@ help:
 	@echo "  Red:"
 	@echo "    make network     - Crear red compartida ($(NETWORK_NAME))"
 	@echo ""
+	@echo "  Version:"
+	@echo "    make version-json - Regenerar version-api/html/version.json desde VERSION"
+	@echo ""
 
 # --- Red compartida ---
 
@@ -66,14 +70,22 @@ targets:
 
 # --- Maestro ---
 
-start: network
+start: network version-json
 	./scripts/start.sh
 
 stop:
 	docker compose down
 
-restart:
+restart: version-json
 	docker compose restart
+
+version-json:
+	@SERVICE=huachicol; \
+	 VERSION=$$(tr -d '[:space:]' < VERSION); \
+	 RELEASED_AT=$$(grep -m1 "^## \[$$VERSION\]" docs/CHANGELOG.md | sed -E 's/^## \[[^]]+\] - ([0-9-]+).*/\1/'); \
+	 if [ -z "$$RELEASED_AT" ]; then echo "WARN: no se encontro entrada '## [$$VERSION] - YYYY-MM-DD' en docs/CHANGELOG.md" >&2; fi; \
+	 printf '{"version":"%s","service":"%s","released_at":"%s"}\n' "$$VERSION" "$$SERVICE" "$$RELEASED_AT" > version-api/html/version.json; \
+	 echo "version.json -> $$VERSION ($$SERVICE, $$RELEASED_AT)"
 
 logs:
 	docker compose logs -f

@@ -1,3 +1,5 @@
 .env
 agent/.env
 prometheus/targets/*.json
+
+version-api/html/version.json

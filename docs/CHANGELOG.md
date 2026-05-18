@@ -14,6 +14,38 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.20.1] - 2026-05-18
+
+### Bajar consumo de `cadvisor` en VM compartida de staging
+
+En la VM `mapalab` (staging compartido donde corre todo el ecosistema, `e2-standard-2` con 2 vCPU / 8 GiB RAM), `cadvisor` estaba topado al 99.87% de su `mem_limit: 256M`, consumiendo 15-17% de CPU sostenido y habia leido **146 GB** acumulados en 35 dias de uptime. La causa raiz era el `--housekeeping_interval` por defecto (1 segundo) sumado a metricas pesadas que casi nadie grafica.
+
+#### Cambiado
+
+- **`docker-compose.yml`** (servicio `cadvisor`):
+  - Agregado `-housekeeping_interval=30s` (antes default 1s). Reduce ~30x las lecturas a `/sys`, `/proc` y `/var/lib/docker`. Se alinea con el valor que ya usaba `huachicol-cadvisor` en `agent/docker-compose.yml`.
+  - Agregado `-disable_metrics=percpu,sched,tcp,udp,advtcp,process,hugetlb,referenced_memory,resctrl,cpu_topology,memory_numa`. Las metricas criticas (CPU, memoria, network, fs, disk I/O por contenedor) se mantienen; las desactivadas no se grafican en los dashboards actuales.
+  - `memory: 256M → 512M`. El limite previo era insuficiente para cadvisor v0.55 monitoreando ~27 contenedores; topaba constantemente forzando GC.
+
+- **`agent/docker-compose.yml`** (servicio `huachicol-cadvisor`, perfiles `all`/`cadvisor`): mismos cambios de `-disable_metrics` y `memory: 256M → 512M` para consistencia entre despliegues. El `-housekeeping_interval=30s` ya estaba.
+
+#### Impacto esperado
+
+- I/O de lectura: ~146 GB → ~5 GB en 35 dias (30x menos por subir el intervalo).
+- CPU sostenido: 15-17% → ~1-3%.
+- Memoria: deja de topar el limit; opera con cache normal.
+
+#### Despliegue
+
+```bash
+cd ~/huachicol
+git pull
+make version-json          # regenera version-api/html/version.json desde VERSION (esta gitignored)
+docker compose up -d cadvisor
+```
+
+---
+
 ## [1.20.0] - 2026-05-18
 
 ### Endpoint `/ontoy` via sidecar `version-api`

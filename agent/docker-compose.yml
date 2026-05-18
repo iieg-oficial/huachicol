@@ -37,6 +37,7 @@ services:
       - '-prometheus_endpoint=/huachicol'
       - '-store_container_labels=true'
       - '-housekeeping_interval=30s'
+      - '-disable_metrics=percpu,sched,tcp,udp,advtcp,process,hugetlb,referenced_memory,resctrl,cpu_topology,memory_numa'
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:
@@ -51,7 +52,7 @@ services:
       resources:
         limits:
           cpus: '0.50'
-          memory: 256M
+          memory: 512M
     profiles:
       - all
       - cadvisor

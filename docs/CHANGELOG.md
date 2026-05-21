@@ -14,6 +14,20 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.21.0] - 2026-05-21
+
+### Agregado: alertas para el servidor MCP de mapalab
+
+Dos reglas nuevas en `prometheus/rules/alerts.yml` dentro del grupo `ecosystem_integration_alerts`:
+
+- **`MapalabMcpHighErrorRate`** — dispara cuando >10 % de las llamadas a `/mcp/` fallan con HTTP 4xx/5xx en los últimos 10 min, con tráfico sostenido (>0.05 rps). Severity `warning`, label `service: mapalab`. La métrica subyacente es `mapalab_mcp_calls_total{status="error"}` (emitida desde el middleware MCP del backend de mapalab desde 1.34.0).
+
+- **`MapalabMcpHighLatency`** — dispara cuando el p95 del tool (`mapalab_mcp_latency_ms_bucket`) supera 5 s en 10 min con tráfico sostenido. Útil para detectar contención del pool de SQLAlchemy o latencia anormal en DataEngine/GeoServer afectando a los tools del MCP. Severity `warning`.
+
+`promtool check rules` valida las 17 reglas resultantes; el reload por SIGHUP a Prometheus se hace sin downtime.
+
+---
+
 ## [1.20.3] - 2026-05-18
 
 ### Fix: quitar cadvisor de la duplicacion single-VM (etiquetaba 28 containers como dataengine)

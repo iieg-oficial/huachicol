@@ -91,6 +91,37 @@ groups:
           summary: "Mariachi no logra notificar refresh-cache a mapalab."
           description: "El contador mariachi_tree_notify_failed_total se incrementó en los últimos 10 min. Causas habituales: MAPALAB_INTERNAL_TOKEN distinto en mariachi/.env y mapalab/.env, mapalab-backend caído, o red iieg-network rota. El tree de capas queda stale hasta el cron 04:00 UTC."
 
+      - alert: MapalabMcpHighErrorRate
+        expr: |
+          (
+            sum(rate(mapalab_mcp_calls_total{status="error"}[10m]))
+            /
+            sum(rate(mapalab_mcp_calls_total[10m]))
+          ) > 0.10
+          and sum(rate(mapalab_mcp_calls_total[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          service: mapalab
+        annotations:
+          summary: "Tasa de errores del servidor MCP de mapalab por encima del 10%."
+          description: "Más del 10% de las llamadas a /mcp/ están fallando con HTTP 4xx/5xx en los últimos 10 min, con tráfico sostenido (>0.05 rps). Revisar logs de mapalab-backend filtrando por '/mcp/' y el dashboard /administrador/mapalab/stats?tab=mcp."
+
+      - alert: MapalabMcpHighLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, tool) (rate(mapalab_mcp_latency_ms_bucket[10m]))
+          ) > 5000
+          and sum by (tool) (rate(mapalab_mcp_latency_ms_count[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          service: mapalab
+        annotations:
+          summary: "Latencia p95 del tool MCP {{ $labels.tool }} por encima de 5s."
+          description: "El p95 de duración del tool {{ $labels.tool }} en los últimos 10 min es {{ $value | humanize }} ms. Puede indicar contención del pool de SQLAlchemy o latencia anormal en DataEngine/GeoServer."
+
   - name: database_alerts
     interval: 30s
     rules:

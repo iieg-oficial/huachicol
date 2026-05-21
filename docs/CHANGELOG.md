@@ -14,6 +14,19 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.22.0] - 2026-05-21
+
+### Agregado: scrape del nuevo container `mapalab-mcp`
+
+A partir de mapalab 1.35.0 el MCP vive en un container dedicado en vez de embebido en el backend. Se agrega un target nuevo a `projects.json` con label `service=mcp project=mapalab` para que las metricas `mapalab_mcp_calls_total` y `mapalab_mcp_latency_ms` sigan llegando a Prometheus desde su nuevo origen.
+
+- **`.env.example`**: nueva variable `MAPALAB_MCP_TARGET` (formato `host:puerto`, ej. `mapalab-mapalab-mcp-1:8000` en dev, IP:puerto en prod).
+- **`scripts/generate-targets.sh`**: emite el target adicional en `projects.json` cuando la variable esta definida.
+
+Las dos alertas `MapalabMcpHighErrorRate` y `MapalabMcpHighLatency` (agregadas en 1.21.0) siguen funcionando sin cambios — operan sobre las mismas metricas independientemente del job de origen.
+
+---
+
 ## [1.21.0] - 2026-05-21
 
 ### Agregado: alertas para el servidor MCP de mapalab

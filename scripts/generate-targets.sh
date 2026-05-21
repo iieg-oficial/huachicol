@@ -70,6 +70,7 @@ FIRST=true
 {
     printf '['
     add_target "${MAPALAB_BACKEND_TARGET:-}" "project" "mapalab" ', "service": "backend"'
+    add_target "${MAPALAB_MCP_TARGET:-}" "project" "mapalab" ', "service": "mcp"'
     add_target "${MARIACHI_BACKEND_TARGET:-}" "project" "mariachi" ', "service": "backend"'
     add_target "${GATEWAY_NGINX_TARGET:-}" "project" "gateway-hub" ', "service": "nginx"'
     printf '\n]\n'

@@ -14,6 +14,23 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.22.1] - 2026-05-26
+
+### alerts: excluir handlers `/download/*` de `HighLatency`
+
+La alerta `HighLatency` (threshold 1s sobre promedio 5m) estaba disparando para el handler `/download/{workspace}/{layer}` de mapalab-backend con valores de ~9s sostenidos. El handler es streaming de CSVs grandes vía `COPY ... TO STDOUT` y la métrica `http_request_duration_seconds` del instrumentator de FastAPI mide hasta el cierre del response — incluye el tiempo de transferencia al cliente. Las descargas siguen siendo 100% 2xx; la latencia "alta" es función del tamaño del archivo, no de un problema del backend.
+
+#### Cambiado
+
+- **`prometheus/rules/alerts.yml`**: la expresión de `HighLatency` agrega el matcher `handler!~"/download/.*"` en los tres lados del cociente (numerador, denominador y guard `> 0`). Se mantiene la exclusión existente de `project="mariachi"`.
+- **annotations.description**: ahora menciona el `handler` para diagnóstico más rápido y documenta la exclusión.
+
+#### Por qué patch
+
+Solo afina el matcher de una alerta existente — no cambia thresholds, no agrega/quita alertas, no toca targets ni dashboards. Reduce ruido sin afectar cobertura: si una ruta no-download supera 1s sostenido durante 5m, sigue disparando.
+
+---
+
 ## [1.22.0] - 2026-05-21
 
 ### Agregado: scrape del nuevo container `mapalab-mcp`

@@ -14,17 +14,17 @@ groups:
       - alert: HighLatency
         expr: |
           (
-            rate(http_request_duration_seconds_sum{project!="mariachi"}[5m])
+            rate(http_request_duration_seconds_sum{project!="mariachi",handler!~"/download/.*"}[5m])
             /
-            rate(http_request_duration_seconds_count{project!="mariachi"}[5m])
+            rate(http_request_duration_seconds_count{project!="mariachi",handler!~"/download/.*"}[5m])
           ) > 1
-          and rate(http_request_duration_seconds_count{project!="mariachi"}[5m]) > 0
+          and rate(http_request_duration_seconds_count{project!="mariachi",handler!~"/download/.*"}[5m]) > 0
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Latencia promedio por encima de 1s en {{ $labels.project }}."
-          description: "La latencia promedio de los últimos 5 min es {{ $value | humanize }}s en {{ $labels.project }}."
+          description: "La latencia promedio de los últimos 5 min es {{ $value | humanize }}s en {{ $labels.project }} ({{ $labels.handler }}). Excluye handlers /download/* (descargas de CSV legítimamente largas por tamaño de archivo)."
 
       - alert: HighLatencyMariachi
         expr: |

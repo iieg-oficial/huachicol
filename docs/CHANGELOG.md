@@ -14,6 +14,22 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.22.2] - 2026-07-16
+
+### Fix: alertmanager caía en crash-loop por webhook no inyectado
+
+Alertmanager entraba en `Restarting` con `DISCORD_WEBHOOK_URL: parameter not set or null`, lo que a su vez provocaba `Error sending alerts` en Prometheus (no resolvía el contenedor caído).
+
+#### Corregido
+
+- **`docker-compose.yml`**: el servicio `alertmanager` ahora recibe `DISCORD_WEBHOOK_URL` desde el `.env` vía bloque `environment`, igual que el bridge `alertmanager-discord`. El shell del contenedor (`$${DISCORD_WEBHOOK_URL:?}`) ya resuelve; el alerting real sigue enrutándose por `http://alertmanager-discord:9094`.
+
+#### Cambiado
+
+- **`docker-compose.yml`** y **`agent/docker-compose.yml`**: eliminados los defaults inline `${VAR:-valor}`; las variables vienen del `.env` (fail-fast). Puertos y `DISCORD_WEBHOOK_URL` pasan a obligatorios; DSN/exporter opcionales quedan como `${VAR}`.
+
+---
+
 ## [1.22.1] - 2026-05-26
 
 ### alerts: excluir handlers `/download/*` de `HighLatency`

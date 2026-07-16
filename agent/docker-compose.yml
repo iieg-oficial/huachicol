@@ -23,7 +23,7 @@ services:
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     ports:
-      - "${ALLOY_PORT:-12345}:12345"
+      - "${ALLOY_PORT:?}:12345"
     profiles:
       - all
       - telemetry
@@ -47,7 +47,7 @@ services:
       - /var/lib/docker:/var/lib/docker:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     ports:
-      - "${CADVISOR_PORT:-8080}:8080"
+      - "${CADVISOR_PORT:?}:8080"
     deploy:
       resources:
         limits:
@@ -64,9 +64,9 @@ services:
     command:
       - '--web.telemetry-path=/huachicol'
     environment:
-      DATA_SOURCE_NAME: ${POSTGRES_DSN:-}
+      DATA_SOURCE_NAME: ${POSTGRES_DSN}
     ports:
-      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+      - "${POSTGRES_EXPORTER_PORT:?}:9187"
     networks:
       default:
       iieg-network:

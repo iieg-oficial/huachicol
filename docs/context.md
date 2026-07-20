@@ -1,7 +1,7 @@
 # Contexto Completo del Ecosistema IIEG: Huachicol + Gateway-Hub
 
 > Referencia completa del ecosistema para onboarding y consulta rapida.
-> Ultima actualizacion: 2026-04-13
+> Ultima actualizacion: 2026-07-20 (1.23.0)
 
 ---
 
@@ -17,23 +17,29 @@
 
 ## Que es cada proyecto
 
-### Huachicol (`/home/egar/IIEG/huachicol`)
+### Huachicol (`/IIEG/huachicol`)
 
 Stack centralizado de monitoreo y observabilidad. Servicios Docker:
 
+10 servicios. Los marcados **solo local** escuchan en `${BIND_ADDR}` (`127.0.0.1`): no son
+alcanzables desde otro host, el acceso remoto autenticado va por nginx-auth.
+
 | Servicio | Imagen | Funcion | Puerto host |
 |---|---|---|---|
-| Prometheus | prom/prometheus:v3.2.1 | Metricas (scraping) | PROMETHEUS_PORT (default 9090) |
-| Grafana | grafana/grafana:12.0.1 | Dashboards | GRAFANA_PORT (default 3000). Sirve desde subpath `/huachicol/` (`GF_SERVER_SERVE_FROM_SUB_PATH=true`, hardcoded en docker-compose). |
-| Alertmanager | prom/alertmanager:v0.28.1 | Alertas a Discord | ALERTMANAGER_PORT (default 9002) |
-| Loki | grafana/loki:3.4.2 | Logs centralizados | LOKI_PORT (default 9003) |
-| Node Exporter | prom/node-exporter:v1.8.2 | Metricas hardware | NODE_EXPORTER_PORT (default 9010) |
-| cAdvisor | gcr.io/cadvisor/cadvisor:v0.55.1 | Metricas contenedores | CADVISOR_PORT (default 9011) |
-| nginx-auth | nginx:1.28-alpine | Basic auth para Prometheus/Loki | PROMETHEUS_AUTH_PORT/LOKI_AUTH_PORT (default 9091/3101) |
+| Prometheus | prom/prometheus:v3.2.1 | Metricas (scraping) | PROMETHEUS_PORT (9090) — **solo local** |
+| Grafana | grafana/grafana:12.0.1 | Dashboards | GRAFANA_PORT (3000). Sirve desde subpath `/huachicol/` (`GF_SERVER_SERVE_FROM_SUB_PATH=true`, hardcoded en docker-compose). |
+| Alertmanager | prom/alertmanager:v0.28.1 | Ruteo de alertas | ALERTMANAGER_PORT (9002) — **solo local** |
+| alertmanager-discord | build local (python:3.13-alpine) | Traduce alertas a embeds de Discord (`:9094`, sin puerto host) | — |
+| Loki | grafana/loki:3.4.2 | Logs centralizados | LOKI_PORT (9003) — expuesto, los agentes remotos empujan aqui |
+| Alloy | grafana/alloy:v1.16.1 | Logs + metricas de host del propio servidor monitoring (`:12345`, sin puerto host) | — |
+| Node Exporter | prom/node-exporter:v1.8.2 | Metricas hardware | NODE_EXPORTER_PORT (9010) — **solo local** |
+| cAdvisor | gcr.io/cadvisor/cadvisor:v0.55.1 | Metricas contenedores | CADVISOR_PORT (9011) — **solo local** |
+| nginx-auth | nginx:1.28-alpine | Basic auth para Prometheus/Loki | PROMETHEUS_AUTH_PORT/LOKI_AUTH_PORT (9091/3101) — expuestos |
+| version-api | build local (python:3.13-alpine) | Sirve `/ontoy` con version del repo (`:8088`, sin puerto host) | — |
 
 Agente remoto (`agent/`, nombre: `huachicol-agent`): **Alloy v1.16.1** (logs + node metrics consolidados) + cadvisor (v0.55.1) + postgres-exporter (v0.17.1, opcional). Profiles: `all` (alloy + cadvisor), `telemetry` (solo alloy), `cadvisor`, `postgres`. Containers con prefijo `huachicol-`. Alloy expone su HTTP server en `:12345`; cadvisor y postgres-exporter siguen exponiendo en `/huachicol`.
 
-### Gateway-Hub (`/home/egar/IIEG/gateway-hub`)
+### Gateway-Hub (`/IIEG/gateway-hub`)
 
 Reverse proxy NGINX — punto de entrada unico para todos los servicios publicos.
 - SSL/TLS (TLS 1.2+), HSTS, rate limiting por zonas (general/api/static/geoserver), cache GeoServer (2GB/6h) + cache MapaLab assets (500MB/7d)
@@ -41,10 +47,10 @@ Reverse proxy NGINX — punto de entrada unico para todos los servicios publicos
 - Exporta metricas NGINX a Prometheus y logs a Loki
 - Imagen custom: nginx:1.28.2-alpine + envsubst
 
-### Acervo (`/home/egar/IIEG/acervo`)
+### Acervo (`/IIEG/acervo`)
 
-Almacenamiento S3 basado en MinIO. Buckets: mapalab, dateengine, portal, huachicol (backups).
-- Backup mensual automatizado via cron
+Almacenamiento S3 basado en SeaweedFS. Buckets: mapalab, dateengine, portal, huachicol (backups).
+- Backup semanal automatizado via cron (domingos 3AM, retencion 30 dias)
 - Conectado a iieg-network para que Prometheus scrapee metricas
 
 ---
@@ -63,8 +69,8 @@ Almacenamiento S3 basado en MinIO. Buckets: mapalab, dateengine, portal, huachic
     ┌──────────────────────────────────────────────────────────┐
     │                STACK DE MONITOREO (Huachicol)             │
     │  Prometheus ──scrape──> node-exporter, cadvisor, nginx    │
-    │  Alertmanager ──webhook──> Discord (3 canales)            │
-    │  Loki <──promtail── logs Docker                           │
+    │  Alertmanager ──> alertmanager-discord ──> Discord        │
+    │  Loki <──alloy── logs Docker + syslog                     │
     │  Grafana (visualiza Prometheus + Loki)                    │
     │  nginx-auth (basic auth para Prometheus y Loki externos)  │
     └──────────────────────────────────────────────────────────┘
@@ -78,25 +84,26 @@ Almacenamiento S3 basado en MinIO. Buckets: mapalab, dateengine, portal, huachic
 
 ```
 huachicol/
-├── docker-compose.yml              # 8 servicios + nginx-auth
+├── docker-compose.yml              # 10 servicios
 ├── Makefile                        # start, stop, restart, backup, restore, backup-list, agent-*, targets
 ├── .env.example                    # Variables: credenciales, IPs, puertos, targets
 ├── .gitignore                      # .env + prometheus/targets/*.json (generados)
 ├── prometheus/
 │   ├── prometheus.yml              # 9 scrape jobs (5 estaticos + 4 file_sd), scrape_interval 15s
-│   ├── rules/alerts.yml            # 3 grupos: service_alerts, database_alerts, monitoring_stack_alerts
+│   ├── rules/alerts.yml            # 4 grupos: service, ecosystem_integration, database, monitoring_stack (17 reglas)
 │   └── targets/
 │       └── *.json                       # Generados por make targets (en .gitignore)
 ├── grafana/
 │   ├── provisioning/
 │   │   ├── datasources/datasources.yml  # Prometheus (default), Loki
-│   │   └── dashboards/dashboards.yml    # 3 providers: default, projects, infrastructure
+│   │   └── dashboards/dashboards.yml    # 2 providers: general, projects
 │   └── dashboards/
-│       ├── home.json               # Dashboard "IIEG - Vista General" (25 paneles, 5 secciones)
-│       ├── projects/.gitkeep
-│       └── infrastructure/.gitkeep
+│       ├── general/ecosistema-iieg.json   # Dashboard "Ecosistema IIEG" (45 paneles)
+│       ├── projects/aplicaciones.json     # Mapalab & Mariachi (37 paneles)
+
 ├── alertmanager/
-│   └── alertmanager.yml.template   # Template — webhook se inyecta desde .env via sed
+│   ├── alertmanager.yml            # Config directa (sin template desde 1.23.0)
+│   └── discord-webhook/            # Bridge alertmanager -> embeds de Discord
 ├── loki/loki-config.yml            # retention_enabled: true, 744h, TSDB
 ├── nginx-auth/
 │   ├── nginx.conf                  # Proxy auth para Prometheus(:9091) y Loki(:3101)
@@ -112,7 +119,8 @@ huachicol/
 │   ├── generate-targets.sh         # Genera targets JSON desde variables del .env
 │   ├── backup.sh                   # Backup a MinIO (Prometheus snapshot + Grafana + Loki + config)
 │   ├── restore.sh                  # Restaurar backup desde MinIO (todo o por componente)
-│   └── backup-cron                 # Cron: domingos 3AM
+│   ├── backup-cron                 # Cron: domingos 3AM (PROJECT_DIR lo sustituye el Makefile)
+│   └── test-alerts.sh
 ├── docs/
 │   ├── agregar-proyecto.md         # Como agregar proyectos/targets al monitoreo + MinIO JWT
 │   ├── configuracion-env.md       # Guia para obtener cada variable del .env (orientada a GCP)
@@ -173,7 +181,7 @@ Ver `docs/agregar-proyecto.md` para instrucciones detalladas.
 ## Alertas configuradas
 
 ### service_alerts
-- **ServiceDown** (critical, 1m): `up == 0`
+- **ServiceDown** (critical, 5m): `up == 0`
 - **HighLatency** (warning, 5m): latencia > 1s (con guarda `count > 0` desde 1.19.2 para evitar `+Inf` cuando el servicio esta idle)
 - **HighErrorRate** (critical, 2m): errores 5xx > 5% (con guarda `total > 0` desde 1.19.2)
 - **HighMemoryUsage** (warning, 5m): memoria > 90%
@@ -194,17 +202,19 @@ Ver `docs/agregar-proyecto.md` para instrucciones detalladas.
 - **PrometheusTargetScrapeFailure** (warning, 5m)
 - **LokiHighIngestionRate** (warning, 5m): > 10MB/s
 
-### Canales Discord
-- `alertas-criticas` — severity=critical
-- `alertas-warnings` — severity=warning
-- `alertas-database` — service=postgres|mysql
+### Discord
+Un unico receiver (`webhook_configs` → `alertmanager-discord:9094`), que traduce cada
+alerta a un embed y la publica en el webhook de `DISCORD_WEBHOOK_URL`. No hay ruteo por
+canal segun severidad: todas las alertas caen en el mismo canal. `alertmanager-discord`
+traduce los 17 nombres de alerta al espanol (`ALERT_TITLES` en `server.py`); una alerta
+nueva sin entrada ahi llega con su identificador crudo.
 
 ---
 
 ## Seguridad
 
 ### Autenticacion (estado actual)
-- **Prometheus y Loki:** Protegidos con basic auth via nginx-auth sidecar (puertos 9091 y 3101)
+- **Prometheus y Loki:** Protegidos con basic auth via nginx-auth sidecar (puertos 9091 y 3101). Desde 1.23.0 Prometheus/Alertmanager/node-exporter/cAdvisor escuchan solo en `${BIND_ADDR}` (127.0.0.1): el unico acceso remoto es por nginx-auth.
 - **Grafana:** Auth propia con usuario/password de .env. Sirve desde subpath `/huachicol/` via `GF_SERVER_SERVE_FROM_SUB_PATH=true` (hardcoded en docker-compose).
 - **Exporters del agente:** Alloy expone metricas en `:12345` (path por componente); cadvisor y postgres-exporter en `/huachicol`
 - **MinIO:** Metricas protegidas con JWT (bearer_token_file)
@@ -316,16 +326,24 @@ Todos los servicios tienen healthcheck configurado. Grafana depende de Prometheu
 
 ### Servidores en produccion (GCP)
 
-| Servidor | Servicios que corre | Rol |
-|---|---|---|
-| **monitoring** | Huachicol (stack completo de monitoreo) | Observabilidad centralizada |
-| **portal** | Portal web del IIEG + agente de monitoreo | Sitio web principal |
-| **mapalab** | MapaLab + agente de monitoreo | Plataforma de mapas |
-| **mariachi** | MARIACHI + agente de monitoreo | Servicio MARIACHI |
-| **geoserver** | GeoServer + agente de monitoreo | Datos geoespaciales |
-| **acervo** | Acervo (MinIO) + agente de monitoreo | Almacenamiento S3 |
+Son **4 servidores**, no uno por proyecto. Fuente de verdad:
+`gateway-hub/docs/puertos-produccion.mmd` y `recursos-servidores.md`.
 
-El gateway corre en el mismo servidor que el portal (o en su propia VM segun la configuracion).
+Las IPs reales viven en el `.env` (no versionado) y en la doc interna de gateway-hub.
+
+| Servidor | Red | Servicios que corre |
+|---|---|---|
+| **S1** (PORTAL-NVO) | LAN principal | Gateway-hub, **Huachicol**, Acervo (SeaweedFS :8333), Mariachi |
+| **S2** (MAPALAB) | LAN principal | MapaLab (nginx :8081 + backend) + agente |
+| **S3** (GEOSERVER) | LAN principal | GeoServer (Tomcat :8080) + agente |
+| **S4** (PSQL17) | LAN aislada | DataEngine: Postgres :5432, pgbouncer :6432, postgres-exporter :9187, jobs, backup |
+
+Huachicol corre en **S1**, junto al gateway — no en una VM dedicada.
+
+**Restriccion de red critica:** S4 esta en una LAN aislada **sin salida**. No puede empujar
+logs a Loki (`3101 BLOQUEADO`) ni backups a Acervo (`8333 BLOQUEADO`); por eso DataEngine no
+aparece en Loki. La direccion que si funciona es S1 → S4 (`:9187`). Cualquier integracion
+con DataEngine debe ser **pull desde S1**, nunca push desde S4.
 
 ### Dominio
 - **staging:** IP interna (ver .env)
@@ -368,7 +386,7 @@ make backup-cron-install / backup-cron-remove       # Cron semanal (domingos, 3A
 ## Notas de implementacion
 
 - Los targets de Prometheus se **generan** desde variables del `.env` via `scripts/generate-targets.sh` (`make targets`). Los `.json` generados estan en `.gitignore`.
-- El webhook de Discord se inyecta en alertmanager via `sed` en el entrypoint (template en `alertmanager.yml.template`).
+- El webhook de Discord lo consume `alertmanager-discord`; `alertmanager.yml` se monta directo (el hack de `sed` y el `slack_api_url` muerto se eliminaron en 1.23.0).
 - nginx-auth genera el `.htpasswd` en el entrypoint desde env vars `MONITORING_AUTH_USER`/`MONITORING_AUTH_PASSWORD`.
 - Prometheus tiene `--web.enable-lifecycle`, `--web.enable-remote-write-receiver` y `--web.enable-admin-api` (para snapshots de backup) habilitados.
 - Alloy del agente reemplaza a Promtail + node-exporter standalone. Logs via `loki.source.docker` (socket Docker) + `loki.source.file` (syslog); metricas de host via `prometheus.exporter.unix`. Positions y estado en volumen `alloy_data`.

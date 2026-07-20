@@ -21,16 +21,20 @@ make start
 
 ## Servicios
 
-| Servicio | Puerto | URL |
-|----------|--------|-----|
-| Grafana | 9000 | http://localhost:9000 |
-| Prometheus | 9001 | http://localhost:9001 |
-| Prometheus (auth) | 9091 | http://localhost:9091 |
-| AlertManager | 9002 | http://localhost:9002 |
-| Loki | 9003 | http://localhost:9003 |
-| Loki (auth) | 3101 | http://localhost:3101 |
-| Node Exporter | 9010 | http://localhost:9010 |
-| cAdvisor | 9011 | http://localhost:9011 |
+Puertos por defecto (configurables en `.env`). Los marcados como *solo local* escuchan
+en `BIND_ADDR` (`127.0.0.1`): no son alcanzables desde otro host, el acceso remoto
+autenticado va por nginx-auth.
+
+| Servicio | Puerto | Alcance |
+|----------|--------|---------|
+| Grafana | 3000 | Expuesto (via gateway, `/huachicol/`) |
+| Prometheus | 9090 | Solo local |
+| Prometheus (auth) | 9091 | Expuesto — nginx-auth |
+| AlertManager | 9002 | Solo local |
+| Loki | 9003 | Expuesto — push de agentes |
+| Loki (auth) | 3101 | Expuesto — nginx-auth |
+| Node Exporter | 9010 | Solo local |
+| cAdvisor | 9011 | Solo local |
 
 ## Comandos
 
@@ -48,8 +52,10 @@ make agent-start   # Iniciar agente en servidor remoto
 make agent-stop    # Detener agente
 
 # Backups
-make backup              # Backup manual a MinIO
-make backup-cron-install # Cron mensual (dia 1, 3AM)
+make backup              # Backup manual a Acervo (S3)
+make backup-list         # Listar backups disponibles
+make restore DATE=YYYY-MM-DD [COMPONENT=grafana|prometheus|loki|config]
+make backup-cron-install # Cron semanal (domingos, 3AM)
 make backup-cron-remove  # Remover cron
 ```
 
@@ -62,15 +68,18 @@ make backup-cron-remove  # Remover cron
 
 ## Agregar Proyecto
 
-Editar `prometheus/prometheus.yml`:
+Los targets se generan desde el `.env`, no se editan a mano en `prometheus.yml`:
 
-```yaml
-- job_name: 'mi-proyecto'
-  static_configs:
-    - targets: ['<SERVER_IP>:9090']
-      labels:
-        project: 'mi-proyecto'
+```bash
+# 1. Definir el target en .env y .env.example (formato host:puerto)
+MIAPP_BACKEND_TARGET=host.docker.internal:8080
+
+# 2. Registrar la linea add_target en scripts/generate-targets.sh
+# 3. Regenerar (Prometheus lo recoge en ~30s via file_sd)
+make targets
 ```
+
+Guia completa: [docs/agregar-proyecto.md](docs/agregar-proyecto.md)
 
 ## Integracion con Backends
 
@@ -109,5 +118,5 @@ logger.add(new LokiTransport({
 | Servicio | Retencion |
 |----------|-----------|
 | Prometheus | 30 dias |
-| Loki | 30 dias |
-| Backups | 3 meses |
+| Loki | 30 dias (744h) |
+| Backups | 30 dias en Acervo (bucket huachicol), semanal |

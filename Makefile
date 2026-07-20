@@ -166,8 +166,10 @@ restore:
 	@./scripts/restore.sh $(DATE) $(or $(COMPONENT),all)
 
 backup-cron-install:
-	@crontab -l 2>/dev/null | grep -v 'huachicol.*backup' | cat - scripts/backup-cron | crontab -
-	@echo "Cron de backup instalado (domingos a las 3:00 AM)"
+	@sed 's|PROJECT_DIR|$(CURDIR)|' scripts/backup-cron > /tmp/huachicol-backup-cron
+	@crontab -l 2>/dev/null | grep -v 'huachicol.*backup' | cat - /tmp/huachicol-backup-cron | crontab -
+	@rm -f /tmp/huachicol-backup-cron
+	@echo "Cron de backup instalado (domingos a las 3:00 AM) en $(CURDIR)"
 
 backup-cron-remove:
 	@crontab -l 2>/dev/null | grep -v 'huachicol.*backup' | crontab -

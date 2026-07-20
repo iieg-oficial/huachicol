@@ -1,2 +1,3 @@
 # Backup semanal del stack de monitoreo (domingos a las 3:00 AM)
-0 3 * * 0 cd /home/egar/IIEG/huachicol && ./scripts/backup.sh >> /var/log/huachicol-backup.log 2>&1
+# PROJECT_DIR lo sustituye 'make backup-cron-install' con la ruta real de la instalacion
+0 3 * * 0 cd PROJECT_DIR && ./scripts/backup.sh >> /var/log/huachicol-backup.log 2>&1

@@ -26,7 +26,11 @@ SEVERITY_TITLE_ICON = {
 ALERT_TITLES = {
     "ServiceDown": "Servicio caído",
     "HighLatency": "Latencia alta",
+    "HighLatencyMariachi": "Latencia alta en Mariachi",
     "HighErrorRate": "Tasa de errores alta",
+    "MariachiTreeNotifyFailures": "Mariachi no notifica a MapaLab",
+    "MapalabMcpHighErrorRate": "Errores altos en MCP de MapaLab",
+    "MapalabMcpHighLatency": "Latencia alta en MCP de MapaLab",
     "HighMemoryUsage": "Uso de memoria alto",
     "DiskSpaceLow": "Espacio en disco bajo",
     "PostgreSQLDown": "PostgreSQL caído",

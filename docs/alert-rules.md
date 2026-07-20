@@ -5,7 +5,7 @@
 ### ServiceDown
 - **Severidad:** critical
 - **Condicion:** `up == 0`
-- **Espera:** 1 minuto
+- **Espera:** 5 minutos
 - **Que significa:** Un target de Prometheus dejo de responder. Aplica a todos los jobs: prometheus, grafana, loki, mapalab-backend, mariachi-backend, gateway-nginx, dataengine-postgres, acervo-seaweedfs, node-exporter, cadvisor.
 - **Accion:** Verificar que el servicio este corriendo (`docker ps`) y que el puerto sea accesible.
 

@@ -14,6 +14,94 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.23.0] - 2026-07-20
+
+### Auditoría completa del stack: seguridad de red, alertas y correcciones acumuladas
+
+Revisión integral previa a la reestructuración del proyecto. Se corrigen fallos que
+estaban activos en runtime (alerta crítica permanente, dashboard sin datasource,
+nginx-auth enrutando al contenedor equivocado) y se cierra la exposición de red de los
+servicios internos. Punto de retorno estable antes de evaluar el reemplazo del stack.
+
+#### Corregido
+
+- **`nginx-auth/nginx.conf`**: nginx resolvía los upstreams `prometheus` y `loki` una
+  sola vez al arrancar y cacheaba la IP. Al recrearse Prometheus, esa IP interna de la red
+  Docker pasó a pertenecer a **cadvisor**, y nginx-auth enrutaba peticiones ya autenticadas al
+  contenedor equivocado — devolvía 502 solo porque cadvisor no escucha en 9090. Se agrega
+  `resolver 127.0.0.11 valid=10s` y los upstreams pasan por variable
+  (`proxy_pass $var$request_uri`) para que se resuelvan en cada request.
+- **`.env` / `scripts/generate-targets.sh`**: `DATAENGINE_POSTGRES_TARGET` apuntaba a un
+  `postgres-exporter` que no corre en single-VM. Mantenía `ServiceDown` (severity
+  critical) disparando de forma permanente en Discord, desensibilizando el canal. El
+  target queda vacío en este entorno; en producción S1 sigue alcanzando el exporter de S4.
+- **`grafana/dashboards/projects/aplicaciones.json`**: los 37 paneles referenciaban
+  `${DS_PROMETHEUS}` sin que existiera la variable en `templating.list` ni bloque
+  `__inputs` — ningún panel resolvía datasource. Se sustituyen las 33 referencias por el
+  uid real `prometheus`.
+- **`scripts/backup-cron` / `Makefile`**: el cron apuntaba a `/home/egar/IIEG/huachicol`,
+  ruta inexistente; el backup semanal fallaba en silencio. Ahora `make backup-cron-install`
+  sustituye el marcador `PROJECT_DIR` por `$(CURDIR)`, válido en cualquier instalación.
+- **`.github/workflows/validate.yml`**: el CI disparaba en `[main, develop]` y `main` no
+  existe en este repo — ningún push a `production` se validaba. Pasa a
+  `[production, develop]`.
+- **`alertmanager/discord-webhook/server.py`**: `ALERT_TITLES` no cubría
+  `HighLatencyMariachi`, `MariachiTreeNotifyFailures`, `MapalabMcpHighErrorRate` ni
+  `MapalabMcpHighLatency`; llegaban a Discord con el identificador crudo. Cobertura 17/17.
+- **`docs/alert-rules.md`**: `ServiceDown` documentaba espera de 1 minuto; la regla real
+  usa `for: 5m`.
+- **`README.md`**: puertos incorrectos (Grafana 9000 / Prometheus 9001 en vez de
+  3000/9090), retención de backups descrita como "3 meses" y cron como "mensual" cuando es
+  semanal con 30 días, y una sección "Agregar Proyecto" que indicaba editar
+  `prometheus.yml` a mano — flujo sustituido por `generate-targets.sh`.
+
+#### Seguridad
+
+- **`docker-compose.yml`**: Prometheus corría con `--web.enable-admin-api` publicado en
+  `0.0.0.0:9090`, sin autenticación: cualquier host de la LAN podía borrar series vía
+  `/api/v1/admin/tsdb/delete_series`. Prometheus, Alertmanager, node-exporter y cAdvisor
+  pasan a escuchar en `${BIND_ADDR}`. El acceso remoto autenticado sigue por nginx-auth
+  (9091/3101), que no cambia. Loki `:9003` y Grafana `:3000` se mantienen expuestos: los
+  agentes remotos y el gateway dependen de ellos.
+- **`alertmanager/alertmanager.yml`**: el `global.slack_api_url` conservaba el webhook de
+  Discord inyectado por `sed`, en un campo que ya no se usa desde que el routing pasó por
+  `webhook_configs` → `alertmanager-discord:9094`. Se elimina el campo, el placeholder y el
+  hack de `sed` completo; el archivo deja de ser plantilla
+  (`alertmanager.yml.template` → `alertmanager.yml`) y se monta directo en modo lectura.
+
+#### Agregado
+
+- **`.env.example` / `.env`**: variable `BIND_ADDR` para la interfaz de escucha de los
+  servicios internos. `127.0.0.1` en single-VM y en S1 de producción; `0.0.0.0` solo si un
+  host externo debe alcanzarlos de forma directa. Contempla las dos topologías del
+  ecosistema (single-VM y los 4 servidores documentados en gateway-hub).
+- **`docker-compose.yml`**: `alertmanager` era el único servicio sin `healthcheck` ni
+  `deploy.resources.limits`. Se agregan (256M / 0.25 CPU), alineados con el resto.
+
+#### Eliminado
+
+- `alertmanager/discord-webhook/__pycache__/server.cpython-313.pyc` versionado en git, y
+  `__pycache__/` + `*.pyc` agregados al `.gitignore`.
+- `prometheus/targets/cadvisor.json.template` y `node-exporter.json.template`: huérfanos
+  desde la migración a Alloy — ningún script los leía y describían el esquema previo de
+  puertos (9100/8080 directos).
+
+#### Por qué minor
+
+Introduce una variable obligatoria nueva (`BIND_ADDR`) sin la cual el compose falla, y
+renombra `alertmanager.yml.template` a `alertmanager.yml`. Un despliegue existente
+necesita actualizar su `.env` antes de arrancar, así que no es un patch transparente. No
+llega a mayor porque no cambia la arquitectura del stack ni el contrato de métricas.
+
+#### Verificación
+
+Con el stack corriendo: 13 targets `up`, 0 `down`, 0 alertas firing. Prometheus
+inalcanzable desde la LAN (`000`), vía nginx-auth con credenciales `200` y sin
+credenciales `401`. Dashboard `iieg-aplicaciones` devolviendo datos reales.
+`promtool check rules` 17/17, `amtool check-config` SUCCESS, `docker compose config` OK.
+
+---
+
 ## [1.22.2] - 2026-07-16
 
 ### Fix: alertmanager caía en crash-loop por webhook no inyectado

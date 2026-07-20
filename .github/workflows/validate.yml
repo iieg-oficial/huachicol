@@ -2,9 +2,9 @@ name: Validate Configuration
 
 on:
   push:
-    branches: [main, develop]
+    branches: [production, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [production, develop]
 
 jobs:
   validate-yaml:
@@ -19,8 +19,8 @@ jobs:
       - name: Lint Prometheus config
         run: yamllint -d relaxed prometheus/prometheus.yml
 
-      - name: Lint Alertmanager template
-        run: yamllint -d relaxed alertmanager/alertmanager.yml.template
+      - name: Lint Alertmanager config
+        run: yamllint -d relaxed alertmanager/alertmanager.yml
 
       - name: Lint Loki config
         run: yamllint -d relaxed loki/loki-config.yml

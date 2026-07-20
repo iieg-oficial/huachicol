@@ -1,6 +1,5 @@
 global:
   resolve_timeout: 5m
-  slack_api_url: 'DISCORD_WEBHOOK_PLACEHOLDER'
 
 route:
   group_by: ['alertname', 'cluster', 'service']

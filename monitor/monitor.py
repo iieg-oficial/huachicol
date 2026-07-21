@@ -63,19 +63,41 @@ def run_cycle(config: Config, store: Store, notifier: Notifier) -> list[Event]:
         if event:
             events.append(event)
 
+    deploy = store.deploy_state()
+    if deploy["until"] and not deploy["active"]:
+        store.end_deploy()
+        notifier.notify_deploy("timeout")
+        print("[monitor] ventana de despliegue expirada, alertas reactivadas", flush=True)
+        deploy = {"active": False, "until": None, "started_at": None}
+
     if events:
-        delivered = notifier.notify(events)
-        for event in events:
-            store.record_event(
-                slug=event.slug,
-                kind=event.kind,
-                from_status=event.from_status,
-                to_status=event.status,
-                detail=event.detail,
-                notified=delivered,
+        if deploy["active"]:
+            for event in events:
+                store.record_event(
+                    slug=event.slug,
+                    kind=event.kind,
+                    from_status=event.from_status,
+                    to_status=event.status,
+                    detail=event.detail,
+                    notified=False,
+                )
+            print(
+                f"[monitor] despliegue en curso: {len(events)} evento(s) suprimidos",
+                flush=True,
             )
-        estado = "enviadas" if delivered else "FALLO el envio de"
-        print(f"[monitor] {len(events)} notificacion(es) {estado}", flush=True)
+        else:
+            delivered = notifier.notify(events)
+            for event in events:
+                store.record_event(
+                    slug=event.slug,
+                    kind=event.kind,
+                    from_status=event.from_status,
+                    to_status=event.status,
+                    detail=event.detail,
+                    notified=delivered,
+                )
+            estado = "enviadas" if delivered else "FALLO el envio de"
+            print(f"[monitor] {len(events)} notificacion(es) {estado}", flush=True)
 
     failing = [r for r in results if r.status != "ok"]
     print(
@@ -97,7 +119,7 @@ def main() -> int:
 
     store = Store(config.db_path)
     notifier = Notifier(config)
-    api = MonitorApi(config, store)
+    api = MonitorApi(config, store, notifier)
     api.start()
 
     canales = []

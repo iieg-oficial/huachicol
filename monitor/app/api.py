@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 from app.alerting import humanize_duration
 from app.config import Config
+from app.notifiers import Notifier
 from app.store import Store
 
 SERVICE_VERSION = "1.0.0"
@@ -41,13 +42,14 @@ def _state_to_public(state: dict[str, Any], store: Store) -> dict[str, Any]:
 
 
 class MonitorApi:
-    def __init__(self, config: Config, store: Store) -> None:
+    def __init__(self, config: Config, store: Store, notifier: Notifier) -> None:
         self._config = config
         self._store = store
+        self._notifier = notifier
         self._server: ThreadingHTTPServer | None = None
 
     def start(self) -> None:
-        config, store = self._config, self._store
+        config, store, notifier = self._config, self._store, self._notifier
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
@@ -105,6 +107,35 @@ class MonitorApi:
                 if path == "/api/events":
                     limit = int((query.get("limit") or ["50"])[0])
                     self._json(200, {"events": store.recent_events(min(limit, 200))})
+                    return
+
+                self._json(404, {"error": "not found"})
+
+            def do_POST(self) -> None:
+                path = urlparse(self.path).path.rstrip("/")
+
+                if path == "/api/deploy/start":
+                    until = store.start_deploy(config.deploy_timeout)
+                    notifier.notify_deploy("start")
+                    print(f"[deploy] ventana iniciada hasta {until}", flush=True)
+                    self._json(200, {"deploy": "started", "until": until})
+                    return
+
+                if path == "/api/deploy/end":
+                    store.end_deploy()
+                    states = store.all_states()
+                    total = len(states)
+                    ok = sum(1 for s in states if s["status"] == "ok")
+                    caidos = [
+                        s["slug"] for s in states
+                        if s["status"] in ("down", "unreachable")
+                    ]
+                    resumen = f"{ok}/{total} servicios ok."
+                    if caidos:
+                        resumen += " Con problemas: " + ", ".join(caidos) + "."
+                    notifier.notify_deploy("end", resumen)
+                    print("[deploy] ventana finalizada", flush=True)
+                    self._json(200, {"deploy": "ended", "ok": ok, "total": total})
                     return
 
                 self._json(404, {"error": "not found"})

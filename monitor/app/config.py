@@ -31,6 +31,7 @@ class Config:
     reminder_hours: int = 0
     environment: str = "production"
     deadman_url: str = ""
+    deploy_timeout: int = 900
     extra: dict = field(default_factory=dict)
 
 
@@ -101,4 +102,5 @@ def load_config() -> Config:
         reminder_hours=_as_int("MONITOR_REMINDER_HOURS", 0),
         environment=os.environ.get("MONITOR_ENVIRONMENT", "production").strip(),
         deadman_url=os.environ.get("MONITOR_DEADMAN_URL", "").strip(),
+        deploy_timeout=_as_int("MONITOR_DEPLOY_TIMEOUT", 900),
     )

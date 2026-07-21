@@ -8,10 +8,6 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [CHANGELOG-1.x.md](./CHANGELOG-1.x.md).
 
-## [No publicado]
-
----
-
 ## [2.0.0] - 2026-07-21
 
 ### Apagado del stack de observabilidad: el repo queda como monitor ligero
@@ -46,3 +42,12 @@ disponibilidad. El repo pasa a contener solo `version-api` (sidecar `/ontoy`) y 
 
 Cambio incompatible de proposito: el repo deja de desplegar el stack de observabilidad. El
 punto de retorno con el stack completo es el tag `v1.23.0`.
+
+### Ventana de despliegue en el monitor
+
+Durante un despliegue los servicios caen y suben; para no spamear alertas, el monitor gana
+endpoints `POST /api/deploy/start` y `POST /api/deploy/end`. Entre ambos **suprime** las
+alertas individuales de caida/recuperacion (los eventos se registran igual, `notified=0`) y
+solo envia un mensaje al iniciar y otro al finalizar (con resumen `N/total ok`). La ventana
+expira sola tras `MONITOR_DEPLOY_TIMEOUT` segundos (900 por defecto) si no llega el `end`. El
+`make deploy` de cada repo envuelve el deploy con esas llamadas (patron en `monitor/README.md`).

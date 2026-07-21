@@ -103,6 +103,51 @@ class Notifier:
             delivered = enviar(events) and delivered
         return delivered
 
+    def notify_deploy(self, kind: str, summary: str | None = None) -> bool:
+        presets = {
+            "start": (
+                "🚀 Despliegue iniciado",
+                "Alertas de caida y recuperacion suprimidas durante la ventana.",
+                COLOR_INFO,
+            ),
+            "end": ("✅ Despliegue finalizado", summary or "Alertas reactivadas.", COLOR_RECOVERED),
+            "timeout": (
+                "⌛ Ventana de despliegue expirada",
+                "No se recibio fin de despliegue; se reactivan las alertas automaticamente.",
+                COLOR_DEGRADED,
+            ),
+        }
+        title, description, color = presets.get(kind, presets["end"])
+        return self._broadcast(title, description, color)
+
+    def _broadcast(self, title: str, description: str, color: int) -> bool:
+        footer = f"huachicol-monitor · {self._config.environment}"
+        canales = []
+        if self._config.discord_webhook_url:
+            payload = {"embeds": [{
+                "title": title,
+                "description": description,
+                "color": color,
+                "footer": {"text": footer},
+            }]}
+            canales.append(lambda: self._post_json(
+                self._config.discord_webhook_url, payload, "discord"))
+        if self._config.telegram_bot_token and self._config.telegram_chat_id:
+            url = f"https://api.telegram.org/bot{self._config.telegram_bot_token}/sendMessage"
+            payload = {
+                "chat_id": self._config.telegram_chat_id,
+                "text": f"{title}\n{description}",
+                "disable_web_page_preview": True,
+            }
+            canales.append(lambda: self._post_json(url, payload, "telegram"))
+        if not canales:
+            print("[notify] sin canales configurados, mensaje de despliegue no entregado", flush=True)
+            return False
+        delivered = True
+        for enviar in canales:
+            delivered = enviar() and delivered
+        return delivered
+
     def _send_discord(self, events: list[Event]) -> bool:
         embeds = []
         for event in events[:MAX_EMBEDS]:

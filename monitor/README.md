@@ -53,9 +53,35 @@ nunca van en `targets.json`.
 | `GET /api/events` | Ultimos eventos registrados (`?limit=50`) |
 | `GET /healthz` | Liveness |
 | `GET /ontoy` | Version del propio monitor |
+| `POST /api/deploy/start` | Abre una ventana de despliegue (suprime alertas) |
+| `POST /api/deploy/end` | Cierra la ventana y reactiva alertas |
 
 Escucha en `${BIND_ADDR}:${MONITOR_API_PORT}` (8090 por defecto), solo local. Mariachi la
 consume por la red Docker `iieg-network`.
+
+## Ventana de despliegue
+
+Un despliegue apaga y prende varios servicios: sin esto, el monitor mandaria una cascada de
+"caido/recuperado". En vez de eso, envuelve el deploy entre `/api/deploy/start` y
+`/api/deploy/end`: durante la ventana **se suprimen** las alertas individuales (los eventos se
+guardan igual, `notified=0`) y solo se manda un mensaje al abrir y otro al cerrar (con el
+resumen `N/total ok`). Si no llega el `end`, la ventana expira sola tras
+`MONITOR_DEPLOY_TIMEOUT` segundos (900 por defecto) y las alertas se reactivan.
+
+Patron para el `make deploy` de cualquier repo (el `trap` garantiza el cierre aunque el
+deploy falle):
+
+```makefile
+MONITOR_URL ?= http://127.0.0.1:8090
+
+deploy:
+	@curl -fsS -X POST "$(MONITOR_URL)/api/deploy/start" >/dev/null 2>&1 || true
+	@bash -c 'trap "curl -fsS -X POST \"$(MONITOR_URL)/api/deploy/end\" >/dev/null 2>&1 || true" EXIT; \
+	          docker compose up -d --build'
+```
+
+En produccion multi-VM, `MONITOR_URL` apunta al monitor de S1 (no `127.0.0.1`); la VM que
+despliega debe poder alcanzarlo.
 
 ## Operacion
 

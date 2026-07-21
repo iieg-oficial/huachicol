@@ -47,6 +47,11 @@ CREATE TABLE IF NOT EXISTS events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_time ON events (occurred_at);
+
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
 """
 
 
@@ -199,6 +204,45 @@ class Store:
         if not row or not row["total"]:
             return None
         return round((row["up"] or 0) / row["total"] * 100, 2)
+
+    def _set_meta(self, key: str, value: str | None) -> None:
+        with self._lock:
+            if value is None:
+                self._conn.execute("DELETE FROM meta WHERE key = ?", (key,))
+            else:
+                self._conn.execute(
+                    "INSERT INTO meta (key, value) VALUES (?,?)"
+                    " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (key, value),
+                )
+            self._conn.commit()
+
+    def _get_meta(self, key: str) -> str | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT value FROM meta WHERE key = ?", (key,)
+            ).fetchone()
+        return row["value"] if row else None
+
+    def start_deploy(self, timeout_seconds: int) -> str:
+        until = (
+            datetime.now(timezone.utc) + timedelta(seconds=timeout_seconds)
+        ).isoformat(timespec="seconds").replace("+00:00", "Z")
+        self._set_meta("deploy_until", until)
+        self._set_meta("deploy_started_at", _now())
+        return until
+
+    def end_deploy(self) -> None:
+        self._set_meta("deploy_until", None)
+        self._set_meta("deploy_started_at", None)
+
+    def deploy_state(self) -> dict[str, Any]:
+        until = self._get_meta("deploy_until")
+        return {
+            "active": bool(until) and _now() < until,
+            "until": until,
+            "started_at": self._get_meta("deploy_started_at"),
+        }
 
     def prune(self, retention_days: int) -> int:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat(

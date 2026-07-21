@@ -14,6 +14,55 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.24.0] - 2026-07-20
+
+### Agregado: monitor ligero basado en `/ontoy` y contrato v2
+
+Primera fase del reemplazo del stack de observabilidad. Se agrega un servicio propio que
+sondea el `/ontoy` de cada proyecto del ecosistema, guarda estado en SQLite y notifica a
+Discord y Telegram con histeresis. Convive con Prometheus/Grafana/Loki: **no se apaga nada
+todavia**.
+
+#### Agregado
+
+- **`version-api/ontoy_server.py`**: contrato `/ontoy` v2, aditivo sobre v1. Agrega
+  `deployed_at` (mtime real del artefacto, distinto de `released_at` que viene del
+  CHANGELOG), `status` (`ok`/`degraded`/`down`), `checks` (disco con umbrales configurables
+  y dependencias HTTP declarables) y `containers` (leidos del socket de Docker). Responde
+  `503` cuando `status` es `down`, siempre con cuerpo JSON valido. Sin dependencias externas.
+- **`monitor/`**: servicio nuevo (`huachicol-monitor`). Sondeo paralelo con timeout,
+  estado e historico en SQLite, API HTTP para consumo de Mariachi, y notificadores de
+  Discord y Telegram que **agrupan todos los eventos de un ciclo en un solo mensaje**.
+  Solo biblioteca estandar, ~15 MB de RAM.
+- **Histeresis**: no alerta hasta `MONITOR_FAILURE_THRESHOLD` fallos consecutivos (3 por
+  defecto), no repite mientras el servicio siga caido, y avisa al recuperarse. Es la
+  correccion directa del patron que dejo inservible el canal de Discord con `ServiceDown`.
+- **`docs/ontoy-contrato.md`**: especificacion del contrato, guia de portabilidad por repo
+  y tabla de adopcion.
+- **`monitor/tests/`**: 12 tests de la logica de histeresis (umbral exacto, no repeticion,
+  fallos intermitentes, recuperacion, cambio de version). Integrados al CI.
+
+#### Seguridad
+
+- El socket de Docker se monta **solo en el sidecar `version-api`**, nunca en las
+  aplicaciones que reciben trafico publico. El socket equivale a root en el host:
+  montarlo en `mapalab-backend` o `mariachi-api` convertiria un fallo de esas apps en
+  control del servidor. El sidecar no acepta parametros de entrada.
+
+#### Notas
+
+- `dataengine` se sondea via `host.docker.internal`: vive en su propia red y en produccion
+  esta en una LAN sin salida, por lo que solo admite **pull desde S1**.
+- El monitor no se puede observar a si mismo. Antes de apagar el stack viejo hace falta un
+  dead-man's switch externo.
+
+#### Por que minor
+
+Agrega funcionalidad nueva sin quitar nada: el contrato `/ontoy` es aditivo y los
+consumidores de v1 (Mariachi ya lee `version`) siguen funcionando sin cambios.
+
+---
+
 ## [1.23.0] - 2026-07-20
 
 ### Auditoría completa del stack: seguridad de red, alertas y correcciones acumuladas

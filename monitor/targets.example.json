@@ -1,0 +1,43 @@
+[
+  {
+    "slug": "huachicol",
+    "label": "Huachicol",
+    "url": "http://huachicol-version-api:8088/ontoy"
+  },
+  {
+    "slug": "geoserver",
+    "label": "GeoServer",
+    "url": "http://geoserver-version-api:8088/ontoy"
+  },
+  {
+    "slug": "acervo",
+    "label": "Acervo",
+    "url": "http://acervo-version-api:8088/ontoy"
+  },
+  {
+    "slug": "dataengine",
+    "label": "DataEngine",
+    "url": "http://host.docker.internal:8088/ontoy",
+    "comment": "dataengine vive en su propia red; en produccion S4 esta en LAN aislada y solo acepta pull desde S1"
+  },
+  {
+    "slug": "mapalab",
+    "label": "MapaLab",
+    "url": "http://mapalab-backend-1:8000/ontoy"
+  },
+  {
+    "slug": "mariachi",
+    "label": "Mariachi",
+    "url": "http://mariachi-api:8000/ontoy"
+  },
+  {
+    "slug": "gateway-hub",
+    "label": "Gateway Hub",
+    "url": "http://gateway-hub-nginx-1:80/ontoy"
+  },
+  {
+    "slug": "sieej",
+    "label": "SIEEJ",
+    "url": "http://gateway-hub-nginx-1/sieej/ontoy"
+  }
+]

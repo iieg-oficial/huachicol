@@ -291,9 +291,15 @@ services:
     build: ./version-api
     container_name: huachicol-version-api
     restart: unless-stopped
+    environment:
+      ONTOY_SERVICE: huachicol
+      ONTOY_COMPOSE_PROJECT: huachicol
+      ONTOY_DISK_PATH: /host-root
     volumes:
       - ./VERSION:/app/VERSION:ro
       - ./version-api/html/version.json:/app/version.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host-root:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/ontoy').read()"]
       interval: 30s
@@ -302,6 +308,43 @@ services:
     networks:
       - iieg-network
 
+  monitor:
+    build: ./monitor
+    container_name: huachicol-monitor
+    restart: unless-stopped
+    environment:
+      MONITOR_TARGETS_FILE: /app/targets.json
+      MONITOR_POLL_INTERVAL: ${MONITOR_POLL_INTERVAL}
+      MONITOR_FAILURE_THRESHOLD: ${MONITOR_FAILURE_THRESHOLD}
+      MONITOR_RECOVERY_THRESHOLD: ${MONITOR_RECOVERY_THRESHOLD}
+      MONITOR_HISTORY_RETENTION_DAYS: ${MONITOR_HISTORY_RETENTION_DAYS}
+      MONITOR_REMINDER_HOURS: ${MONITOR_REMINDER_HOURS}
+      MONITOR_ENVIRONMENT: ${MONITOR_ENVIRONMENT}
+      DISCORD_WEBHOOK_URL: ${MONITOR_DISCORD_WEBHOOK_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+    volumes:
+      - ./monitor/targets.json:/app/targets.json:ro
+      - monitor_data:/data
+    ports:
+      - "${BIND_ADDR}:${MONITOR_API_PORT}:8090"
+    networks:
+      - monitoring
+      - iieg-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
 networks:
   monitoring:
     driver: bridge
@@ -309,6 +352,7 @@ networks:
     external: true
 
 volumes:
+  monitor_data:
   prometheus_data:
   grafana_data:
   alertmanager_data:

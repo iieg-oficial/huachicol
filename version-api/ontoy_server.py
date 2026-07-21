@@ -112,6 +112,31 @@ def _check_dependency(url: str) -> dict[str, Any]:
         return {"status": STATUS_DOWN, "detail": str(exc)[:120]}
 
 
+def _parse_port_checks() -> list[tuple[str, str, int]]:
+    raw = os.environ.get("ONTOY_PORT_CHECKS", "").strip()
+    if not raw:
+        return []
+    checks = []
+    for item in raw.split(","):
+        item = item.strip()
+        if not item or "=" not in item:
+            continue
+        name, target = item.split("=", 1)
+        host, _, port = target.strip().rpartition(":")
+        if not host or not port.isdigit():
+            continue
+        checks.append((name.strip(), host, int(port)))
+    return checks
+
+
+def _check_port(host: str, port: int) -> dict[str, Any]:
+    try:
+        with socket.create_connection((host, port), timeout=DEPENDENCY_TIMEOUT):
+            return {"status": STATUS_OK, "port": port}
+    except Exception as exc:
+        return {"status": STATUS_DOWN, "port": port, "detail": str(exc)[:120]}
+
+
 def _docker_get(path: str) -> Any:
     connection = _UnixHTTPConnection(str(DOCKER_SOCKET_PATH), timeout=DEPENDENCY_TIMEOUT)
     try:
@@ -182,6 +207,8 @@ def build_payload() -> dict[str, Any]:
     checks: dict[str, Any] = {"disk": _check_disk()}
     for name, url in _parse_dependencies():
         checks[name] = _check_dependency(url)
+    for name, host, port in _parse_port_checks():
+        checks[name] = _check_port(host, port)
 
     containers, containers_error = _list_containers()
     if containers or containers_error:

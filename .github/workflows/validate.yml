@@ -47,6 +47,23 @@ jobs:
           sed -i 's/^[A-Z_]*=$/&placeholder/' agent/.env
           docker compose -f agent/docker-compose.yml config --quiet
 
+  test-monitor:
+    name: Test Monitor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Run unit tests
+        working-directory: monitor
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate targets.example.json
+        run: python -c "import json; json.load(open('monitor/targets.example.json'))"
+
   validate-prometheus:
     name: Validate Prometheus Rules
     runs-on: ubuntu-latest

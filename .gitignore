@@ -1,7 +1,4 @@
 .env
-agent/.env
-prometheus/targets/*.json
-prometheus/targets/minio-token
 version-api/html/version.json
 __pycache__/
 *.pyc

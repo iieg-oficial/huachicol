@@ -53,14 +53,20 @@ publicada en Mariachi (Documentacion → Contrato /ontoy).
 **Bloqueante antes de apagar nada.** Hoy Prometheus vigila al monitor; cuando se apague,
 si el monitor cae nadie avisa y el silencio se ve igual que "todo bien".
 
-Opciones:
+**Mecanismo implementado (push).** El monitor hace `GET` a `MONITOR_DEADMAN_URL` tras cada
+ciclo exitoso. Si el proceso muere o el ciclo se cuelga, el ping se detiene y el receptor
+externo alerta tras su periodo de gracia. No requiere abrir puertos entrantes ni otra
+maquina con acceso al monitor; solo salida HTTPS (la misma que ya usa para Discord/Telegram).
 
-- Cron en otra maquina que consulte `GET /healthz` del monitor y avise si no responde
-- Servicio externo tipo healthchecks.io al que el monitor haga ping en cada ciclo
-- El agente de otro servidor vigilando al de S1
+**Pendiente: elegir el receptor** (decision de deployment, el codigo es agnostico).
 
-La opcion mas barata: el propio monitor hace `GET` a un endpoint externo tras cada ciclo
-exitoso; si deja de hacerlo, el externo alerta.
+| Opcion | Infra | Dependencia externa |
+|---|---|---|
+| healthchecks.io (SaaS, tier gratuito) | ninguna | si (SaaS de terceros) |
+| healthchecks.io self-hosted en otra VM | un contenedor en S2/S3 | no |
+
+Configuracion: crear el check con periodo `60s` + gracia (ej. `120s`) y pegar su ping URL
+en `MONITOR_DEADMAN_URL`. En prod la salida del monitor a ese receptor debe estar permitida.
 
 ---
 

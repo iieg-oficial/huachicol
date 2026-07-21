@@ -14,6 +14,33 @@ salio a production con el commit inicial del stack de monitoreo.
 
 ---
 
+## [1.25.0] - 2026-07-21
+
+### Agregado: dead-man's switch del monitor por ping externo
+
+El monitor no puede vigilarse a si mismo: si cae, el silencio se ve igual que "todo bien".
+Es el prerequisito para apagar Prometheus, que hoy cumple esa funcion.
+
+#### Agregado
+
+- **`MONITOR_DEADMAN_URL`**: el monitor hace `GET` a esa URL al terminar cada ciclo
+  exitoso. Si el proceso muere o el ciclo se cuelga, el ping se detiene y el receptor
+  externo alerta tras su periodo de gracia. El ping nunca rompe el ciclo: si falla, se
+  loguea y sigue. Vacio = desactivado.
+
+#### Notas
+
+- Enfoque push: no requiere abrir puertos entrantes ni otra maquina con acceso al monitor,
+  solo salida HTTPS (la misma que ya usa para Discord/Telegram). El monitor es agnostico al
+  receptor (healthchecks.io SaaS o self-hosted); elegirlo es decision de deployment.
+
+#### Por que minor
+
+Agrega una capacidad nueva sin cambiar el comportamiento existente: con la variable vacia
+el monitor funciona igual que antes.
+
+---
+
 ## [1.24.0] - 2026-07-20
 
 ### Agregado: monitor ligero basado en `/ontoy` y contrato v2

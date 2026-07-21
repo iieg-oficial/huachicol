@@ -30,6 +30,7 @@ class Config:
     notify_min_interval: float = 2.0
     reminder_hours: int = 0
     environment: str = "production"
+    deadman_url: str = ""
     extra: dict = field(default_factory=dict)
 
 
@@ -99,4 +100,5 @@ def load_config() -> Config:
         notify_min_interval=_as_float("MONITOR_NOTIFY_MIN_INTERVAL", 2.0),
         reminder_hours=_as_int("MONITOR_REMINDER_HOURS", 0),
         environment=os.environ.get("MONITOR_ENVIRONMENT", "production").strip(),
+        deadman_url=os.environ.get("MONITOR_DEADMAN_URL", "").strip(),
     )

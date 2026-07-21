@@ -2,6 +2,7 @@ import signal
 import sys
 import threading
 import time
+import urllib.request
 from typing import Any
 
 from app.alerting import Event, evaluate
@@ -13,10 +14,22 @@ from app.store import Store
 
 _shutdown = threading.Event()
 
+DEADMAN_TIMEOUT = 5.0
+
 
 def _handle_signal(signum: int, _frame: Any) -> None:
     print(f"[monitor] senal {signum} recibida, cerrando", flush=True)
     _shutdown.set()
+
+
+def ping_deadman(url: str) -> None:
+    if not url:
+        return
+    try:
+        with urllib.request.urlopen(url, timeout=DEADMAN_TIMEOUT) as response:
+            response.read()
+    except Exception as exc:
+        print(f"[monitor] fallo el ping al dead-man's switch: {exc}", flush=True)
 
 
 def run_cycle(config: Config, store: Store, notifier: Notifier) -> list[Event]:
@@ -98,14 +111,24 @@ def main() -> int:
         f"{', '.join(canales) if canales else 'ningun canal'}",
         flush=True,
     )
+    print(
+        "[monitor] dead-man's switch "
+        f"{'activo (ping por ciclo)' if config.deadman_url else 'NO configurado'}",
+        flush=True,
+    )
 
     last_prune = 0.0
     while not _shutdown.is_set():
         started = time.monotonic()
+        cycle_ok = False
         try:
             run_cycle(config, store, notifier)
+            cycle_ok = True
         except Exception as exc:
             print(f"[monitor] error en el ciclo: {exc}", flush=True)
+
+        if cycle_ok:
+            ping_deadman(config.deadman_url)
 
         if time.monotonic() - last_prune > 86400:
             removed = store.prune(config.history_retention_days)

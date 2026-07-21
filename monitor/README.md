@@ -78,10 +78,22 @@ cd monitor && python -m unittest discover -s tests -v
 Cubren la histeresis, que es donde estan los errores caros: alertar de mas (spam) o de
 menos (silencio en un incidente real).
 
+## Dead-man's switch
+
+El monitor no puede vigilarse a si mismo: si cae, el silencio se ve igual que "todo bien".
+Para cubrirlo hace ping HTTP a `MONITOR_DEADMAN_URL` al terminar **cada ciclo exitoso**.
+Si el proceso muere o el ciclo se cuelga, el ping se detiene y el receptor externo alerta
+tras su periodo de gracia. El monitor es agnostico al receptor: solo hace un `GET` a esa
+URL, asi que sirve cualquier backend de ping.
+
+- **healthchecks.io (SaaS):** crear un check con periodo `60s` + gracia (ej. `120s`) y pegar
+  su ping URL en `MONITOR_DEADMAN_URL`. Cero infra; requiere salida HTTPS del monitor.
+- **healthchecks.io self-hosted u otro receptor:** misma URL, sin dependencia de terceros.
+
+Vacio = desactivado. El ping nunca rompe el ciclo: si falla, solo se loguea.
+
 ## Limites conocidos
 
-- **Se monitorea a si mismo.** Si el monitor cae, nadie avisa. Hace falta un dead-man's
-  switch externo (cron en otra maquina que consulte `/healthz`, o healthchecks.io).
 - **No guarda logs.** Detecta que algo esta caido, no por que. Para el diagnostico
   retrospectivo sigue haciendo falta Loki o rotacion de logs en el host.
 - **Sondeo cada 60s.** Una caida de menos de un minuto puede pasar inadvertida.

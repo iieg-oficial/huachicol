@@ -83,9 +83,12 @@ Apagar de menor a mayor perdida. Entre cada paso, **una semana de margen**.
 | 5 | alertmanager + discord | 38 MB | Ruteo de alertas. Ya lo hace el monitor |
 | 6 | nginx-auth | 3 MB | Solo protegia Prometheus y Loki |
 
-**Loki + Alloy (255 MB) se quedan al final, y su apagado es una decision aparte.** Son lo
-unico que responde "que paso anoche". Sin ellos, un incidente raro no se puede reconstruir.
-Si se apagan, dejar al menos rotacion de logs en el host y una forma de llegar a ellos.
+**Loki + Alloy (255 MB) se quedan al final.** Decision tomada: el historico de Loki **no se
+migra ni se archiva** — no se ha usado. Al apagar se descarta y se deja solo **rotacion
+local** en cada servicio (docker logging driver con `max-size`/`max-file`), suficiente para
+que los logs corrientes sobrevivan en el host sin llenar disco y sean accesibles con
+`docker logs`. El cambio de logging entra en el mismo PR que quita Loki/Alloy; no hay
+migracion previa.
 
 Antes del paso 4: exportar el TSDB o aceptar que se pierde el historico. `make backup`
 sigue funcionando y sube un snapshot a Acervo.

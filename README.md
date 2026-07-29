@@ -1,122 +1,97 @@
-# IIEG Monitoring Stack
+# huachicol
 
-Servidor centralizado de monitoreo y observabilidad para todos los proyectos del IIEG.
+Monitoreo y alertas del ecosistema IIEG. Sondea el `/ontoy` de cada servicio, guarda el estado en
+SQLite y notifica a Discord y Telegram con histeresis.
 
-## Stack
+**Desde 2.0.0 (2026-07-21) es un monitor ligero, no un stack de observabilidad.** Prometheus,
+Grafana, Alertmanager, Loki, Alloy, node-exporter, cAdvisor, `nginx-auth` y el agente remoto se
+retiraron por completo. El punto de retorno con el stack anterior es el tag `v1.23.0`; como estaba
+armado quedo documentado en el repositorio central de contexto (`historial/`).
 
-- **Prometheus** — Metricas y monitoreo
-- **Grafana** — Dashboards
-- **AlertManager** — Alertas a Discord
-- **Loki** — Logs centralizados
-- **Node Exporter** — Metricas del servidor
-- **cAdvisor** — Metricas de contenedores
+## Requisitos
 
-## Inicio Rapido
+- Docker >= v28 y Docker Compose >= v2.36
+- La red externa `iieg-network`, que gestiona gateway-hub (`make network` la crea si falta)
+
+## Puesta en marcha
 
 ```bash
 cp .env.example .env
-nano .env            # Configurar variables
+nano .env                 # webhook de Discord, token de Telegram, umbrales
 make start
+```
+
+## Comandos
+
+**Este repo no tiene `deploy` ni `up`:** sus targets son distintos al resto del ecosistema.
+
+```bash
+make start        # crear la red e iniciar
+make stop
+make restart
+make network      # crear iieg-network
+make version-json # regenerar el payload de /ontoy
+make logs
+make status
+make clean        # detener y eliminar datos
 ```
 
 ## Servicios
 
-Puertos por defecto (configurables en `.env`). Los marcados como *solo local* escuchan
-en `BIND_ADDR` (`127.0.0.1`): no son alcanzables desde otro host, el acceso remoto
-autenticado va por nginx-auth.
+| Servicio | Contenedor | Funcion |
+|----------|------------|---------|
+| `monitor` | `huachicol-monitor` | Sondea, guarda estado y alerta. API en `${BIND_ADDR}:${MONITOR_API_PORT}` (8090, solo local) |
+| `version-api` | `huachicol-version-api` | Sidecar que expone el `/ontoy` del propio repo en `:8088` |
 
-| Servicio | Puerto | Alcance |
-|----------|--------|---------|
-| Grafana | 3000 | Expuesto (via gateway, `/huachicol/`) |
-| Prometheus | 9090 | Solo local |
-| Prometheus (auth) | 9091 | Expuesto — nginx-auth |
-| AlertManager | 9002 | Solo local |
-| Loki | 9003 | Expuesto — push de agentes |
-| Loki (auth) | 3101 | Expuesto — nginx-auth |
-| Node Exporter | 9010 | Solo local |
-| cAdvisor | 9011 | Solo local |
+## Variables de entorno
 
-## Comandos
+Todas vienen del `.env`; el compose falla si falta alguna.
 
-```bash
-# Stack principal
-make start       # Crear red e iniciar stack
-make stop        # Detener
-make restart     # Reiniciar
-make logs        # Ver logs
-make status      # Ver estado
-make clean       # Detener y eliminar datos
+| Variable | Para que |
+|----------|----------|
+| `BIND_ADDR` | Interfaz donde escucha la API del monitor (`127.0.0.1`) |
+| `MONITOR_POLL_INTERVAL` | Segundos entre sondeos (60) |
+| `MONITOR_FAILURE_THRESHOLD` | Fallos seguidos antes de alertar (3) |
+| `MONITOR_RECOVERY_THRESHOLD` | Sondeos correctos para declarar recuperacion |
+| `MONITOR_HISTORY_RETENTION_DAYS` | Retencion del historial en SQLite |
+| `MONITOR_REMINDER_HOURS` | Cada cuanto recordar un servicio que sigue caido |
+| `MONITOR_ENVIRONMENT` | Etiqueta del entorno en los mensajes |
+| `MONITOR_API_PORT` | Puerto de la API interna (8090) |
+| `MONITOR_DEADMAN_URL` | Receptor del dead-man's switch; vacio lo desactiva |
+| `MONITOR_DEPLOY_TIMEOUT` | Expiracion de la ventana de despliegue (900 s) |
+| `MONITOR_DISCORD_WEBHOOK_URL` | Webhook del canal de alertas |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Canal alterno de alertas |
 
-# Agente remoto
-make agent-start   # Iniciar agente en servidor remoto
-make agent-stop    # Detener agente
+## Que se monitorea
 
-# Backups
-make backup              # Backup manual a Acervo (S3)
-make backup-list         # Listar backups disponibles
-make restore DATE=YYYY-MM-DD [COMPONENT=grafana|prometheus|loki|config]
-make backup-cron-install # Cron semanal (domingos, 3AM)
-make backup-cron-remove  # Remover cron
-```
-
-## Configurar Alertas Discord
-
-1. Discord: Server Settings > Integrations > Webhooks > New Webhook
-2. Copiar URL y agregar `/slack` al final
-3. Poner en .env: `DISCORD_WEBHOOK_URL=<TU_WEBHOOK_URL>/slack`
-4. `make restart`
-
-## Agregar Proyecto
-
-Los targets se generan desde el `.env`, no se editan a mano en `prometheus.yml`:
+Los servicios sondeados viven en `monitor/targets.json` (hoy son 8), que se monta como **bind**: al
+editarlo hay que **recrear** el contenedor, no basta `restart`.
 
 ```bash
-# 1. Definir el target en .env y .env.example (formato host:puerto)
-MIAPP_BACKEND_TARGET=host.docker.internal:8080
-
-# 2. Registrar la linea add_target en scripts/generate-targets.sh
-# 3. Regenerar (Prometheus lo recoge en ~30s via file_sd)
-make targets
+docker compose up -d --force-recreate monitor
 ```
 
-Guia completa: [docs/agregar-proyecto.md](docs/agregar-proyecto.md)
+`monitor/targets.example.json` es la plantilla. Agregar un servicio es agregar su entrada con el URL
+de su `/ontoy`: no hace falta que exponga metricas ni que instale nada, que es justo lo que hacia
+pesado el modelo anterior.
 
-## Integracion con Backends
+## Ventana de despliegue
 
-### Metricas (Prometheus)
+Antes de tocar produccion, abrir la ventana para que las alertas en cascada no suenen:
 
-```javascript
-const promClient = require('prom-client');
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
-
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
+```bash
+curl -X POST http://<monitor>:8090/api/deploy/start
+# ... desplegar ...
+curl -X POST http://<monitor>:8090/api/deploy/end
 ```
 
-### Logs (Loki)
-
-```javascript
-const winston = require('winston');
-const LokiTransport = require('winston-loki');
-
-logger.add(new LokiTransport({
-  host: 'http://localhost:3100',
-  labels: { app: 'mi-proyecto' }
-}));
-```
+Expira sola tras `MONITOR_DEPLOY_TIMEOUT`.
 
 ## Documentacion
 
-- [Onboarding agente](docs/onboarding-agente.md) — Desplegar agente en servidor nuevo
-- [Pendientes](docs/pendientes/) — Mejoras planeadas (Authentik, gateway)
+- [Monitor](monitor/README.md) — detalle operativo del monitor: histeresis, eventos, SQLite
+- [CHANGELOG](docs/CHANGELOG.md) — serie 2.x; el historico 1.x en [changelog/v1.md](docs/changelog/v1.md)
 
-## Retencion de Datos
-
-| Servicio | Retencion |
-|----------|-----------|
-| Prometheus | 30 dias |
-| Loki | 30 dias (744h) |
-| Backups | 30 dias en Acervo (bucket huachicol), semanal |
+El contexto, el contrato `/ontoy` que consume el monitor y los pendientes viven en el repositorio
+central de contexto (`repos/huachicol/`). Los planes cerrados y el stack 1.x retirado, en
+`historial/`.

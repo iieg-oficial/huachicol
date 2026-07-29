@@ -8,6 +8,33 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.1.1] - 2026-07-29
+
+### El README describia el stack retirado y los docs 1.x se archivaron
+
+Solo documentacion; sin cambios en el monitor.
+
+#### Cambiado
+
+- **README reescrito.** Se titulaba «IIEG Monitoring Stack», listaba los ocho servicios retirados
+  en 2.0.0 con sus puertos y documentaba targets del Makefile que ya no existen (`make targets`,
+  `make backup`, `make agent-start`, `make backup-cron-install`). Ahora describe los dos servicios
+  reales, las trece variables del `.env`, `monitor/targets.json` con su gotcha de recrear el
+  contenedor, y la ventana de despliegue.
+- `docs/CHANGELOG-1.x.md` → `docs/changelog/v1.md`, siguiendo el patron de acervo (un archivo por
+  major bajo `docs/changelog/`).
+
+#### Eliminado
+
+- `docs/alert-rules.md`, `discord-alerts.md`, `configuracion-env.md` y `agregar-proyecto.md`:
+  describian el stack Prometheus/Grafana/Alertmanager/Loki retirado el 2026-07-21, con requisitos
+  (`/metrics`) y scripts que ya no existen. Quedaron condensados en
+  `historial/2026-07-huachicol-stack-observabilidad-1x.md` del repositorio central de contexto,
+  con los umbrales de las siete alertas, el enrutamiento y sus limites conocidos — util para un
+  rollback al tag `v1.23.0`.
+- `docs/context.md`, `onboarding-agente.md`, `ontoy-contrato.md` y `docs/pendientes/`: viven ahora
+  en `repos/huachicol/` del repo central.
+
 ## [2.1.0] - 2026-07-29
 
 ### Cambiado: las alertas dicen que check esta degradado, no solo cual fallo

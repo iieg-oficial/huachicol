@@ -35,6 +35,32 @@ class ProbeResult:
         return self.status in FAILING_STATUSES
 
 
+def _label_check(name: str, check: dict[str, Any]) -> str:
+    detail = check.get("detail")
+    return f"{name} ({detail})" if detail else name
+
+
+def _describe_checks(checks: dict[str, Any]) -> str | None:
+    failing: list[str] = []
+    degraded: list[str] = []
+    for name in sorted(checks):
+        check = checks[name]
+        if not isinstance(check, dict):
+            continue
+        status = check.get("status")
+        if status in FAILING_STATUSES:
+            failing.append(_label_check(name, check))
+        elif status == STATUS_DEGRADED:
+            degraded.append(_label_check(name, check))
+
+    partes = []
+    if failing:
+        partes.append(f"checks en fallo: {', '.join(failing)}")
+    if degraded:
+        partes.append(f"checks degradados: {', '.join(degraded)}")
+    return " | ".join(partes) if partes else None
+
+
 def _parse_payload(target: Target, payload: dict[str, Any], latency_ms: int) -> ProbeResult:
     status = str(payload.get("status") or STATUS_OK)
     if status not in VALID_STATUSES:
@@ -48,11 +74,7 @@ def _parse_payload(target: Target, payload: dict[str, Any], latency_ms: int) -> 
     if not isinstance(containers, list):
         containers = []
 
-    failing_checks = [
-        name for name, check in checks.items()
-        if isinstance(check, dict) and check.get("status") in FAILING_STATUSES
-    ]
-    detail = f"checks en fallo: {', '.join(sorted(failing_checks))}" if failing_checks else None
+    detail = _describe_checks(checks)
 
     return ProbeResult(
         slug=target.slug,

@@ -6,7 +6,29 @@ Cambios notables de `huachicol`. Formato basado en
 
 Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
-retirado en 2.0.0; su historico esta en [CHANGELOG-1.x.md](./CHANGELOG-1.x.md).
+retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
+
+## [2.1.0] - 2026-07-29
+
+### Cambiado: las alertas dicen que check esta degradado, no solo cual fallo
+
+El monitor ya trataba `degraded` como estado no sano —tras `MONITOR_FAILURE_THRESHOLD`
+sondeos alerta igual que con `down`—, pero el detalle del mensaje solo enumeraba los checks
+en `down` o `unreachable`. Un servicio que se reportaba degradado producia una alerta sin
+explicacion: "MapaLab: degradado" y nada mas.
+
+Ahora el detalle distingue ambos grupos y arrastra el `detail` que cada check trae en su
+`/ontoy`:
+
+```
+checks en fallo: db (connection refused) | checks degradados: client_errors (6 errores de
+carga en el navegador en 15 min (predomina chunk_load_error))
+```
+
+El cambio habilita el patron de reportar sintomas de usuario como checks degradados: mapalab
+1.97.0 expone `client_errors` con la cuenta de fallos de carga que reportan los navegadores,
+que era justo lo que dejo de verse al retirar Prometheus y Alertmanager en 2.0.0. No requiere
+cambios en `targets.json` ni en la configuracion de los servicios monitoreados.
 
 ## [2.0.0] - 2026-07-21
 

@@ -7,7 +7,8 @@
   {
     "slug": "geoserver",
     "label": "GeoServer",
-    "url": "http://geoserver-version-api:8088/ontoy"
+    "url": "http://geoserver-version-api:8088/ontoy",
+    "comment": "Multi-VM: usar http://<S3>:8088/ontoy. Requiere VERSION_API_PORT publicado (geoserver 1.30.2); sin eso el 8088 solo existe dentro de iieg-network y el monitor da Connection refused"
   },
   {
     "slug": "acervo",
@@ -18,12 +19,13 @@
     "slug": "dataengine",
     "label": "DataEngine",
     "url": "http://host.docker.internal:8088/ontoy",
-    "comment": "dataengine vive en su propia red; en produccion S4 esta en LAN aislada y solo acepta pull desde S1"
+    "comment": "Multi-VM: usar http://<S4>:8088/ontoy. dataengine vive en su propia red; en produccion S4 esta en LAN aislada y solo acepta pull desde S1"
   },
   {
     "slug": "mapalab",
     "label": "MapaLab",
-    "url": "http://mapalab-backend-1:8000/ontoy"
+    "url": "http://mapalab-backend-1:8000/ontoy",
+    "comment": "Multi-VM: usar http://<S2>:8081/api/ontoy, por el nginx de mapalab. Su backend no publica el 8000, y /mapalab/api/ontoy responde 403 desde gateway-hub 1.35.1"
   },
   {
     "slug": "mariachi",

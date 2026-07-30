@@ -8,6 +8,37 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.1.2] - 2026-07-30
+
+### La plantilla de targets ahora explica el caso multi-VM
+
+`targets.example.json` estaba escrito solo para el caso monolito, con nombres de contenedor en
+todas las entradas. Eso funciona cuando el monitor comparte host con lo que vigila, pero **en
+produccion cada servicio vive en su propia VM y `iieg-network` no cruza de nodo**: el DNS de docker
+no resuelve nombres remotos y el servicio queda `unreachable` sin que nada este roto.
+
+Detectado en produccion el 2026-07-30: GeoServer llevaba dias caido en el panel y **MapaLab ni
+siquiera figuraba** en la lista de targets.
+
+#### Cambiado
+
+- Las entradas de `geoserver`, `dataengine` y `mapalab` llevan un `comment` con la URL que
+  corresponde cuando el servicio vive en otra VM, y con lo que hace falta de cada lado.
+
+#### La regla
+
+- Servicio en el **mismo host** que el monitor: nombre de contenedor.
+- Servicio en **otra VM**: **IP y puerto publicado al host**. Si el container no declara `ports:`,
+  no es alcanzable aunque este en `iieg-network`.
+- Comprobar antes de dar algo por caido:
+  `timeout 3 bash -c 'echo > /dev/tcp/<ip>/<puerto>'`. **Refused** = falta publicar el puerto;
+  **timeout** = lo bloquea el firewall. La diferencia decide entre un cambio de una linea y una
+  solicitud de apertura.
+- Si el nginx de un servicio bloquea `/ontoy` para cerrarlo a internet, verificar que el monitor
+  siga entrando: entre VMs **si** pasa por ese nginx, a diferencia del monolito.
+
+---
+
 ## [2.1.1] - 2026-07-29
 
 ### El README describia el stack retirado y los docs 1.x se archivaron

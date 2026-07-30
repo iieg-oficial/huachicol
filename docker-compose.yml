@@ -48,7 +48,7 @@ services:
       - ./monitor/targets.json:/app/targets.json:ro
       - monitor_data:/data
     ports:
-      - "${BIND_ADDR}:${MONITOR_API_PORT}:8090"
+      - "${MONITOR_BIND_ADDR:?}:${MONITOR_API_PORT:?}:8090"
     networks:
       - iieg-network
     extra_hosts:

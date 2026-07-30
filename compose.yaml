@@ -43,11 +43,12 @@ services:
       MONITOR_HISTORY_RETENTION_DAYS: ${MONITOR_HISTORY_RETENTION_DAYS:?}
       MONITOR_REMINDER_HOURS: ${MONITOR_REMINDER_HOURS:?}
       MONITOR_ENVIRONMENT: ${MONITOR_ENVIRONMENT:?}
-      MONITOR_DEADMAN_URL: ${MONITOR_DEADMAN_URL?}
       MONITOR_DEPLOY_TIMEOUT: ${MONITOR_DEPLOY_TIMEOUT:?}
-      DISCORD_WEBHOOK_URL: ${MONITOR_DISCORD_WEBHOOK_URL?}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN?}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID?}
+    secrets:
+      - discord_webhook_url
+      - telegram_bot_token
+      - monitor_deadman_url
     volumes:
       - ./monitor/targets.json:/app/targets.json:ro
       - monitor_data:/data
@@ -76,3 +77,11 @@ networks:
 
 volumes:
   monitor_data:
+
+secrets:
+  discord_webhook_url:
+    file: ./secrets/discord_webhook_url
+  telegram_bot_token:
+    file: ./secrets/telegram_bot_token
+  monitor_deadman_url:
+    file: ./secrets/monitor_deadman_url

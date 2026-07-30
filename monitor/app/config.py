@@ -55,6 +55,13 @@ def _as_float(name: str, default: float) -> float:
         return default
 
 
+def _as_secret(name: str, secrets_dir: str = "/run/secrets") -> str:
+    path = Path(secrets_dir) / name.lower()
+    if path.is_file():
+        return path.read_text(encoding="utf-8").strip()
+    return os.environ.get(name, "").strip()
+
+
 def load_targets(path: Path) -> list[Target]:
     if not path.exists():
         raise FileNotFoundError(f"no se encontro el archivo de targets: {path}")
@@ -95,12 +102,12 @@ def load_config() -> Config:
         history_retention_days=_as_int("MONITOR_HISTORY_RETENTION_DAYS", 30),
         db_path=Path(os.environ.get("MONITOR_DB_PATH", "/data/monitor.db")),
         api_port=_as_int("MONITOR_API_PORT", 8090),
-        discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL", "").strip(),
-        telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN", "").strip(),
+        discord_webhook_url=_as_secret("DISCORD_WEBHOOK_URL"),
+        telegram_bot_token=_as_secret("TELEGRAM_BOT_TOKEN"),
         telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID", "").strip(),
         notify_min_interval=_as_float("MONITOR_NOTIFY_MIN_INTERVAL", 2.0),
         reminder_hours=_as_int("MONITOR_REMINDER_HOURS", 0),
         environment=os.environ.get("MONITOR_ENVIRONMENT", "production").strip(),
-        deadman_url=os.environ.get("MONITOR_DEADMAN_URL", "").strip(),
+        deadman_url=_as_secret("MONITOR_DEADMAN_URL"),
         deploy_timeout=_as_int("MONITOR_DEPLOY_TIMEOUT", 900),
     )

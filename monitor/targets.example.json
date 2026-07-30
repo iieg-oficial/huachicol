@@ -24,8 +24,8 @@
   {
     "slug": "mapalab",
     "label": "MapaLab",
-    "url": "http://mapalab-backend-1:8000/ontoy",
-    "comment": "Multi-VM: usar http://<S2>:8081/api/ontoy, por el nginx de mapalab. Su backend no publica el 8000, y /mapalab/api/ontoy responde 403 desde gateway-hub 1.35.1"
+    "url": "http://mapalab-version-api:8088/ontoy",
+    "comment": "Desde mapalab 1.102.0 el target es el sidecar, que fusiona los checks del backend (db, client_errors, embeds). Multi-VM: usar http://<S2>:8081/ontoy, por el nginx de mapalab; el sidecar no publica el 8088. Las rutas al backend (/api/ontoy y /mapalab/api/ontoy) ya responden 403"
   },
   {
     "slug": "mariachi",

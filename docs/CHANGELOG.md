@@ -8,6 +8,18 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.4.0] - 2026-07-30
+
+### Corregido: el target de mapalab apunta al sidecar, no al backend
+
+Desde mapalab 1.102.0 el `/ontoy` bueno es el del sidecar `version-api`, que **fusiona** los checks
+del backend (`db`, `client_errors`, `embeds`) con los suyos (`disk`, `containers`) en vez de
+reemplazarlos. El target seguía apuntando a `mapalab-backend-1:8000`, que da menos información y
+además quedó cerrado: gateway-hub responde 403 tanto en `/api/ontoy` como en `/mapalab/api/ontoy`.
+
+`targets.example.json` pasa a `http://mapalab-version-api:8088/ontoy`. En multi-VM el sidecar no
+publica el 8088, así que ahí el target es `http://<S2>:8081/ontoy`, por el nginx de mapalab.
+
 ## [2.3.0] - 2026-07-30
 
 ### Cambiado: Makefile homologado con el resto del ecosistema

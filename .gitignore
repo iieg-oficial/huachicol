@@ -4,3 +4,8 @@ __pycache__/
 *.pyc
 monitor/targets.json
 monitor/**/__pycache__/
+
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+compose.local.yaml

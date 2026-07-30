@@ -1,5 +1,16 @@
 name: huachicol
 
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 3
+
 services:
   version-api:
     build: ./version-api
@@ -14,17 +25,11 @@ services:
       - ./version-api/html/version.json:/app/version.json:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
+      <<: *healthcheck
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/ontoy').read()"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
     networks:
       - iieg-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *logging
 
   monitor:
     build: ./monitor
@@ -32,17 +37,17 @@ services:
     restart: unless-stopped
     environment:
       MONITOR_TARGETS_FILE: /app/targets.json
-      MONITOR_POLL_INTERVAL: ${MONITOR_POLL_INTERVAL}
-      MONITOR_FAILURE_THRESHOLD: ${MONITOR_FAILURE_THRESHOLD}
-      MONITOR_RECOVERY_THRESHOLD: ${MONITOR_RECOVERY_THRESHOLD}
-      MONITOR_HISTORY_RETENTION_DAYS: ${MONITOR_HISTORY_RETENTION_DAYS}
-      MONITOR_REMINDER_HOURS: ${MONITOR_REMINDER_HOURS}
-      MONITOR_ENVIRONMENT: ${MONITOR_ENVIRONMENT}
-      MONITOR_DEADMAN_URL: ${MONITOR_DEADMAN_URL}
-      MONITOR_DEPLOY_TIMEOUT: ${MONITOR_DEPLOY_TIMEOUT}
-      DISCORD_WEBHOOK_URL: ${MONITOR_DISCORD_WEBHOOK_URL}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      MONITOR_POLL_INTERVAL: ${MONITOR_POLL_INTERVAL:?}
+      MONITOR_FAILURE_THRESHOLD: ${MONITOR_FAILURE_THRESHOLD:?}
+      MONITOR_RECOVERY_THRESHOLD: ${MONITOR_RECOVERY_THRESHOLD:?}
+      MONITOR_HISTORY_RETENTION_DAYS: ${MONITOR_HISTORY_RETENTION_DAYS:?}
+      MONITOR_REMINDER_HOURS: ${MONITOR_REMINDER_HOURS:?}
+      MONITOR_ENVIRONMENT: ${MONITOR_ENVIRONMENT:?}
+      MONITOR_DEADMAN_URL: ${MONITOR_DEADMAN_URL?}
+      MONITOR_DEPLOY_TIMEOUT: ${MONITOR_DEPLOY_TIMEOUT:?}
+      DISCORD_WEBHOOK_URL: ${MONITOR_DISCORD_WEBHOOK_URL?}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN?}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID?}
     volumes:
       - ./monitor/targets.json:/app/targets.json:ro
       - monitor_data:/data
@@ -53,16 +58,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
+      <<: *healthcheck
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/healthz')"]
-      interval: 30s
       timeout: 20s
       retries: 5
       start_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *logging
     deploy:
       resources:
         limits:

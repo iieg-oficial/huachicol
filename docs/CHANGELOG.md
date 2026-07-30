@@ -8,6 +8,61 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.3.0] - 2026-07-30
+
+### Cambiado: Makefile homologado con el resto del ecosistema
+
+La interfaz de comandos es ahora la misma en los nueve repos: `up` levanta desarrollo sin
+reconstruir y `deploy` hace produccion completa (`git pull` + `down` + `build` + `up`). Se
+retiraron todas las banderas: el entorno se detecta por el nombre de proyecto de Compose y lo que
+antes era un argumento ahora es un selector interactivo. Lo transversal vive en `make/common.mk` y
+`make/lib.sh`, copiados en cada repo. Convencion completa en `ecosistema/makefiles.md` del repo de
+contexto.
+
+### Cambiado: `start`/`stop` pasan a ser `up`/`down`
+
+Era la unica divergencia de nombres que quedaba en el ecosistema y la trampa mas repetida al
+desplegar este repo. `up` ya no reconstruye; para eso esta `deploy`.
+
+### Eliminado: `version-json`
+
+El `/ontoy` lee la version de `VERSION`, ya montado en el sidecar. Se retiraron el target, el mount
+de `version.json` y la carpeta `version-api/html`.
+
+## [2.2.0] - 2026-07-30
+
+### Agregado: `ONTOY_UPSTREAM_URL` en el sidecar de referencia
+
+El sidecar `version-api` reporta `disk` y `containers`, que es todo lo que hace falta cuando el
+servicio no tiene checks propios. Pero mapalab y mariachi sirven su `/ontoy` desde el backend con
+checks de aplicacion (`db`, `client_errors`, `embeds`, `redis`), y hasta ahora ponerles un sidecar
+obligaba a elegir: o el sidecar, o esos checks.
+
+`ONTOY_UPSTREAM_URL` quita la disyuntiva. Con la variable apuntando al `/ontoy` de la aplicacion,
+el sidecar lo consulta por la red interna y **fusiona** la respuesta en la suya:
+
+| Situacion | Resultado |
+|---|---|
+| El backend responde | Sus `checks` se suman a los del sidecar sin pisarlos; `version`, `released_at` y `deployed_at` se toman de ahi si el sidecar no los tiene |
+| El backend responde 503 | Se lee el cuerpo igual: el contrato garantiza JSON valido tambien en 503, y ahi va el diagnostico |
+| El backend no responde | Check `upstream` en `down`, y el `/ontoy` del sidecar devuelve 503 |
+| El backend se declara `down` sin un check que lo explique | Se agrega un check `upstream` con ese `status`, para no reportar mejor de lo que el servicio dice estar |
+
+El `status` sigue siendo el peor de los checks, como manda el contrato. Sin la variable el
+comportamiento es identico al anterior.
+
+Esto habilita el patron para cualquier servicio con `/ontoy` propio: el sidecar queda como unica
+puerta de entrada del monitor, y el handler de la aplicacion puede cerrarse al exterior sin perder
+un solo check. El primero en usarlo es mapalab 1.102.0.
+
+#### Por que sigue valiendo la pena el sidecar
+
+El socket de Docker equivale a root en el host, y montarlo en el contenedor que recibe trafico
+publico convierte cualquier fallo de la app en control del servidor. El sidecar no acepta entrada
+de usuario: su unica ruta es `/ontoy` y no lee parametros.
+
+---
+
 ## [2.1.2] - 2026-07-30
 
 ### La plantilla de targets ahora explica el caso multi-VM

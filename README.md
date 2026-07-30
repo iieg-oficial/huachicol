@@ -11,26 +11,23 @@ armado quedo documentado en el repositorio central de contexto (`historial/`).
 ## Requisitos
 
 - Docker >= v28 y Docker Compose >= v2.36
-- La red externa `iieg-network`, que gestiona gateway-hub (`make network` la crea si falta)
+- La red externa `iieg-network`, que gestiona gateway-hub (`make up` la crea si falta)
 
 ## Puesta en marcha
 
 ```bash
 cp .env.example .env
 nano .env                 # webhook de Discord, token de Telegram, umbrales
-make start
+make up
 ```
 
 ## Comandos
 
-**Este repo no tiene `deploy` ni `up`:** sus targets son distintos al resto del ecosistema.
-
 ```bash
-make start        # crear la red e iniciar
-make stop
+make up           # crear la red e iniciar
+make deploy       # actualizar, reconstruir y levantar
+make down
 make restart
-make network      # crear iieg-network
-make version-json # regenerar el payload de /ontoy
 make logs
 make status
 make clean        # detener y eliminar datos

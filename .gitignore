@@ -1,5 +1,4 @@
 .env
-version-api/html/version.json
 __pycache__/
 *.pyc
 monitor/targets.json

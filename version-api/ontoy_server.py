@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-VERSION_JSON_PATH = Path("/app/version.json")
 VERSION_FILE_PATH = Path("/app/VERSION")
+STARTED_AT = datetime.now(timezone.utc)
 DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")
 PORT = 8088
 SERVICE = os.environ.get("ONTOY_SERVICE", "huachicol")
@@ -19,6 +19,7 @@ COMPOSE_PROJECT = os.environ.get("ONTOY_COMPOSE_PROJECT", "")
 DISK_PATH = os.environ.get("ONTOY_DISK_PATH", "/")
 DISK_WARN_PERCENT = float(os.environ.get("ONTOY_DISK_WARN_PERCENT", "85"))
 DISK_CRITICAL_PERCENT = float(os.environ.get("ONTOY_DISK_CRITICAL_PERCENT", "95"))
+UPSTREAM_URL = os.environ.get("ONTOY_UPSTREAM_URL", "").strip()
 DEPENDENCY_TIMEOUT = 2.0
 
 STATUS_OK = "ok"
@@ -47,8 +48,6 @@ def _worst(statuses: list[str]) -> str:
 
 
 def _read_version() -> dict[str, Any]:
-    if VERSION_JSON_PATH.exists():
-        return json.loads(VERSION_JSON_PATH.read_text())
     if VERSION_FILE_PATH.exists():
         return {
             "version": VERSION_FILE_PATH.read_text().strip(),
@@ -57,12 +56,8 @@ def _read_version() -> dict[str, Any]:
     return {"version": None, "service": SERVICE}
 
 
-def _deployed_at() -> str | None:
-    for path in (VERSION_JSON_PATH, VERSION_FILE_PATH):
-        if path.exists():
-            ts = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
-            return ts.isoformat(timespec="seconds").replace("+00:00", "Z")
-    return None
+def _deployed_at() -> str:
+    return STARTED_AT.isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def _check_disk() -> dict[str, Any]:
@@ -110,6 +105,45 @@ def _check_dependency(url: str) -> dict[str, Any]:
         return {"status": STATUS_DOWN, "detail": f"HTTP {exc.code}"}
     except Exception as exc:
         return {"status": STATUS_DOWN, "detail": str(exc)[:120]}
+
+
+def _fetch_upstream(url: str) -> tuple[dict[str, Any], str | None]:
+    try:
+        request = urllib.request.Request(
+            url, method="GET", headers={"Accept": "application/json"}
+        )
+        with urllib.request.urlopen(request, timeout=DEPENDENCY_TIMEOUT) as response:
+            return json.loads(response.read()), None
+    except urllib.error.HTTPError as exc:
+        try:
+            return json.loads(exc.read()), None
+        except Exception:
+            return {}, f"HTTP {exc.code}"
+    except Exception as exc:
+        return {}, str(exc)[:120]
+
+
+def _merge_upstream(payload: dict[str, Any], checks: dict[str, Any]) -> None:
+    upstream, error = _fetch_upstream(UPSTREAM_URL)
+    if error:
+        checks["upstream"] = {"status": STATUS_DOWN, "detail": error}
+        return
+
+    for name, check in (upstream.get("checks") or {}).items():
+        if isinstance(check, dict) and "status" in check:
+            checks.setdefault(name, check)
+
+    for field in ("version", "released_at", "deployed_at"):
+        if not payload.get(field) and upstream.get(field):
+            payload[field] = upstream[field]
+
+    declared = upstream.get("status")
+    merged = _worst([c["status"] for c in checks.values()])
+    if declared in _SEVERITY and _SEVERITY[declared] > _SEVERITY[merged]:
+        checks["upstream"] = {
+            "status": declared,
+            "detail": f"el servicio se declara {declared} sin un check que lo explique",
+        }
 
 
 def _parse_port_checks() -> list[tuple[str, str, int]]:
@@ -220,6 +254,9 @@ def build_payload() -> dict[str, Any]:
         }
         if containers_error:
             checks["containers"]["detail"] = containers_error
+
+    if UPSTREAM_URL:
+        _merge_upstream(payload, checks)
 
     payload["checks"] = checks
     payload["status"] = _worst([c["status"] for c in checks.values()])

@@ -8,6 +8,16 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.4.1] - 2026-07-31
+
+### Agregado: `VERBOSE=1` en los targets que usan `run_step`
+
+Sincronización de `make/lib.sh` y `make/common.mk` con gateway-hub 1.42.0. `run_step` esconde la
+salida de cada paso y sólo la muestra —las últimas 40 líneas— si falla, así que un `docker build`
+real y uno servido entero por caché se ven igual salvo por el cronómetro. Con `VERBOSE=1` la
+salida se imprime en directo, indentada bajo el paso y conservando el `ok`/`fail` y el tiempo. El
+comportamiento por defecto no cambia.
+
 ## [2.4.0] - 2026-07-30
 
 ### Corregido: el target de mapalab apunta al sidecar, no al backend

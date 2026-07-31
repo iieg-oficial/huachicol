@@ -5,10 +5,10 @@
     "url": "http://huachicol-version-api:8088/ontoy"
   },
   {
-    "slug": "geoserver",
-    "label": "GeoServer",
-    "url": "http://geoserver-version-api:8088/ontoy",
-    "comment": "Multi-VM: usar http://<S3>:8088/ontoy. Requiere VERSION_API_PORT publicado (geoserver 1.30.2); sin eso el 8088 solo existe dentro de iieg-network y el monitor da Connection refused"
+    "slug": "sextante",
+    "label": "Sextante",
+    "url": "http://sextante-version-api:8088/ontoy",
+    "comment": "Multi-VM: usar http://<S3>:8088/ontoy. Requiere VERSION_API_PORT publicado (sextante 1.30.2); sin eso el 8088 solo existe dentro de iieg-network y el monitor da Connection refused"
   },
   {
     "slug": "acervo",

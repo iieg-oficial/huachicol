@@ -8,6 +8,21 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.5.0] - 2026-08-03
+
+### Corregido: los servicios retirados de `targets.json` ya no quedan de fantasma
+
+`service_state` tiene el slug como llave primaria y nada la limpiaba: al sacar un target del JSON
+su fila sobrevivía congelada en el último estado medido y `/api/status` la seguía sirviendo, porque
+devuelve `all_states()` sin cruzarlo contra la configuración. Así quedó `geoserver` tras el
+renombre a sextante del 31 de julio: visible en Observabilidad como `unreachable` desde las
+14:42 UTC, un minuto antes de que arrancara `sextante`. `prune()` no lo alcanzaba — solo poda
+`check_history` y `events` por retención, nunca `service_state`.
+
+El monitor purga ahora al arrancar los slugs que no están en `targets.json`, con su historial y sus
+eventos, y lo anuncia en el log. Un renombre de target deja la base consistente sin intervención
+manual.
+
 ## [2.4.1] - 2026-07-31
 
 ### Agregado: `VERBOSE=1` en los targets que usan `run_step`

@@ -145,6 +145,24 @@ class Store:
             )
             self._conn.commit()
 
+    def drop_unknown(self, slugs: list[str]) -> list[str]:
+        if not slugs:
+            return []
+        placeholders = ",".join("?" for _ in slugs)
+        params = tuple(slugs)
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT slug FROM service_state WHERE slug NOT IN ({placeholders})",
+                params,
+            ).fetchall()
+            obsoletos = [row["slug"] for row in rows]
+            for table in ("service_state", "check_history", "events"):
+                self._conn.execute(
+                    f"DELETE FROM {table} WHERE slug NOT IN ({placeholders})", params
+                )
+            self._conn.commit()
+        return obsoletos
+
     def record_check(
         self, slug: str, status: str, latency_ms: int | None, detail: str | None
     ) -> None:

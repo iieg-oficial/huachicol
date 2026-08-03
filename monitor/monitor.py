@@ -118,6 +118,13 @@ def main() -> int:
         return 1
 
     store = Store(config.db_path)
+    obsoletos = store.drop_unknown([target.slug for target in config.targets])
+    if obsoletos:
+        print(
+            f"[monitor] purgados {len(obsoletos)} servicios fuera de targets.json: "
+            f"{', '.join(obsoletos)}",
+            flush=True,
+        )
     notifier = Notifier(config)
     api = MonitorApi(config, store, notifier)
     api.start()

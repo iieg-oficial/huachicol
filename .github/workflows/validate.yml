@@ -15,7 +15,9 @@ jobs:
 
       - name: Create dummy .env for validation
         run: |
-          cat .env.example | sed 's/^[A-Z_]*=$/&placeholder/' > .env
+          sed -E 's/^([A-Z_]+)=$/\1=placeholder/; s/^([A-Z_]+)=<[^>]*>$/\1=placeholder/' .env.example > .env
+          # Variables cuyo valor el compose valida por formato: un placeholder generico no sirve
+          sed -i -E 's|^MONITOR_BIND_ADDR=.*|MONITOR_BIND_ADDR=127.0.0.1|; s|^ONTOY_DISK_PATH=.*|ONTOY_DISK_PATH=/|' .env
 
       - name: Validate main compose
         run: docker compose config --quiet

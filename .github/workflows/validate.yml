@@ -9,7 +9,8 @@ on:
 jobs:
   validate-compose:
     name: Validate Docker Compose
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 
@@ -24,7 +25,8 @@ jobs:
 
   test-monitor:
     name: Test Monitor
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 

@@ -8,6 +8,28 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.6.0] - 2026-08-21
+
+### Agregado: `/api/status` publica las 24 horas de cada servicio, comprimidas
+
+`check_history` guarda un renglón por sondeo —1 440 al día por servicio— y hasta ahora solo salía de
+ahí un número, `uptime_24h`, y el historial crudo del detalle por servicio. Con eso no se puede
+dibujar una barra de disponibilidad: agrupar por hora en el cliente esconde las caídas cortas, que
+son justo las que nadie alcanza a ver. Una caída de cuatro minutos deja su hora al 93 % y se pinta
+casi entera de verde.
+
+`Store.uptime_tramos()` arma una rejilla de una celda por sondeo sobre la ventana de 24 horas y la
+comprime a tramos consecutivos del mismo estado. La jornada completa de un servicio tranquilo cabe
+en un tramo; la de gateway-hub el día de la caída del ZIP, en quince. La respuesta de diez servicios
+pasó de 8 a 12 KB, con resolución de minuto en lugar de ninguna.
+
+Los huecos —el monitor apagado, un reinicio— salen como `sin_datos` y no como una caída, que es una
+distinción que antes no existía. El `detalle` del primer sondeo con motivo viaja pegado al tramo, así
+que el cliente puede decir por qué se cayó sin pedir el detalle del servicio.
+
+La resolución la manda `MONITOR_POLL_INTERVAL`: si el sondeo baja a diez minutos, la rejilla tiene
+144 celdas en vez de 1 440 y el payload encoge solo.
+
 ## [2.5.0] - 2026-08-03
 
 ### Corregido: los servicios retirados de `targets.json` ya no quedan de fantasma

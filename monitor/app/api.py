@@ -12,7 +12,9 @@ from app.store import Store
 SERVICE_VERSION = "1.0.0"
 
 
-def _state_to_public(state: dict[str, Any], store: Store) -> dict[str, Any]:
+def _state_to_public(
+    state: dict[str, Any], store: Store, resolucion_seg: int = 60
+) -> dict[str, Any]:
     return {
         "slug": state["slug"],
         "label": state["label"],
@@ -37,6 +39,9 @@ def _state_to_public(state: dict[str, Any], store: Store) -> dict[str, Any]:
             ),
         },
         "uptime_24h": store.uptime_percent(state["slug"], hours=24),
+        "uptime_tramos": store.uptime_tramos(
+            state["slug"], hours=24, resolucion_seg=resolucion_seg
+        ),
         "alerted": state["alerted"],
     }
 
@@ -71,7 +76,10 @@ class MonitorApi:
 
                 if path == "/api/status":
                     states = store.all_states()
-                    payload = [_state_to_public(s, store) for s in states]
+                    payload = [
+                        _state_to_public(s, store, config.poll_interval)
+                        for s in states
+                    ]
                     self._json(200, {
                         "environment": config.environment,
                         "poll_interval": config.poll_interval,
@@ -99,7 +107,7 @@ class MonitorApi:
                         json.loads(state["containers"]) if state["containers"] else []
                     )
                     limit = int((query.get("limit") or ["100"])[0])
-                    payload = _state_to_public(state, store)
+                    payload = _state_to_public(state, store, config.poll_interval)
                     payload["history"] = store.history(slug, limit=min(limit, 500))
                     self._json(200, payload)
                     return

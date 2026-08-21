@@ -59,6 +59,17 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _iso(momento: datetime) -> str:
+    return momento.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _parse_iso(valor: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 class Store:
     def __init__(self, db_path: Path) -> None:
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -207,6 +218,50 @@ class Store:
                 (slug, limit),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def uptime_tramos(
+        self, slug: str, hours: int = 24, resolucion_seg: int = 60
+    ) -> dict[str, Any]:
+        paso = max(resolucion_seg, 1)
+        ahora = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        celdas = max(hours * 3600 // paso, 1)
+        desde = ahora - timedelta(seconds=celdas * paso)
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT checked_at, status, detail FROM check_history"
+                " WHERE slug = ? AND checked_at >= ? ORDER BY checked_at ASC",
+                (slug, _iso(desde)),
+            ).fetchall()
+
+        rejilla: list[tuple[str, str | None] | None] = [None] * celdas
+        for row in rows:
+            momento = _parse_iso(row["checked_at"])
+            if momento is None:
+                continue
+            indice = int((momento - desde).total_seconds()) // paso
+            if 0 <= indice < celdas:
+                rejilla[indice] = (row["status"], row["detail"])
+
+        tramos: list[dict[str, Any]] = []
+        for indice, celda in enumerate(rejilla):
+            estado = celda[0] if celda else "sin_datos"
+            detalle = celda[1] if celda else None
+            if tramos and tramos[-1]["estado"] == estado:
+                tramos[-1]["dur"] += 1
+                if detalle and not tramos[-1]["detalle"]:
+                    tramos[-1]["detalle"] = detalle
+                continue
+            tramos.append(
+                {"min": indice, "dur": 1, "estado": estado, "detalle": detalle}
+            )
+
+        return {
+            "desde": _iso(desde),
+            "hasta": _iso(ahora),
+            "resolucion_seg": paso,
+            "celdas": celdas,
+            "tramos": tramos,
+        }
 
     def uptime_percent(self, slug: str, hours: int = 24) -> float | None:
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat(

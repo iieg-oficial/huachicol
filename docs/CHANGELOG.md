@@ -8,7 +8,7 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
-## [2.6.0] - 2026-08-21
+## [2.7.0] - 2026-08-26
 
 ### Agregado: `/api/status` publica las 24 horas de cada servicio, comprimidas
 
@@ -30,6 +30,34 @@ que el cliente puede decir por qué se cayó sin pedir el detalle del servicio.
 La resolución la manda `MONITOR_POLL_INTERVAL`: si el sondeo baja a diez minutos, la rejilla tiene
 144 celdas en vez de 1 440 y el payload encoge solo.
 
+## [2.6.0] - 2026-08-26
+
+### Agregado: un `/ontoy` de encargo para servicios que no lo exponen
+
+El portalito ocupa `location /` del gateway y **no reporta `/ontoy`**, así que era el único servicio
+del ecosistema que nadie vigilaba. Su repo tiene convenciones propias y no se le meten las nuestras,
+que es justo lo que exigiría agregarle un `version-api` a su compose.
+
+`compose.ontoy.yaml` levanta el mismo `version-api` de este repo como **stack aparte**, en el host
+del servicio vigilado y sin tocar su repositorio. Todo lo que lo distingue sale del `.env`:
+`ONTOY_COMPOSE_PROJECT` filtra los contenedores por el label `com.docker.compose.project`,
+`ONTOY_PORT_CHECKS` vigila sus upstreams y `ONTOY_NETWORK` lo mete a la red del stack observado para
+poder alcanzarlos. Con el portalito quedan sus siete contenedores, `portal-nginx:80` y
+`portal-api:8000`.
+
+### Agregado: la versión puede salir del `pyproject.toml` o del `package.json`
+
+`version-api` solo sabía leer un archivo `VERSION`, que es una convención nuestra y no de todos.
+Ahora `ONTOY_VERSION_FILE` acepta también `pyproject.toml` y `package.json`, y los parsea según su
+nombre —de ahí que el volumen deba conservarlo—, así que un repo ajeno reporta su versión sin
+agregarle un archivo.
+
+`ONTOY_CHANGELOG_FILE` completa `released_at`, que el contrato v2 define desde el principio y hasta
+hoy nadie llenaba: sale de la primera entrada `## [x.y.z] - YYYY-MM-DD` del CHANGELOG.
+
+Con el portalito eso deja a la vista un desfase suyo: su `pyproject.toml` declara **1.8.0** y su
+CHANGELOG va en **1.9.1**, del 5 de agosto. El endpoint reporta lo que el repo dice, no lo que
+debería decir; corregirlo es un issue en su repositorio.
 ## [2.5.0] - 2026-08-03
 
 ### Corregido: los servicios retirados de `targets.json` ya no quedan de fantasma

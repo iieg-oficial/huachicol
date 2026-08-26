@@ -2,6 +2,7 @@ import http.client
 import http.server
 import json
 import os
+import re
 import shutil
 import socket
 import urllib.error
@@ -10,7 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-VERSION_FILE_PATH = Path("/app/VERSION")
+VERSION_FILE_PATH = Path(os.environ.get("ONTOY_VERSION_FILE", "/app/VERSION"))
+CHANGELOG_FILE_PATH = Path(os.environ.get("ONTOY_CHANGELOG_FILE", "/app/CHANGELOG.md"))
 STARTED_AT = datetime.now(timezone.utc)
 DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")
 PORT = 8088
@@ -47,13 +49,48 @@ def _worst(statuses: list[str]) -> str:
     return max(statuses, key=lambda s: _SEVERITY.get(s, 0))
 
 
+def _version_de_pyproject(texto: str) -> str | None:
+    match = re.search(r'^version\s*=\s*["\']([^"\']+)', texto, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _version_de_package_json(texto: str) -> str | None:
+    try:
+        return json.loads(texto).get("version")
+    except (json.JSONDecodeError, AttributeError):
+        return None
+
+
+def _version_del_archivo(ruta: Path) -> str | None:
+    try:
+        texto = ruta.read_text()
+    except OSError:
+        return None
+    if ruta.name == "pyproject.toml":
+        return _version_de_pyproject(texto)
+    if ruta.name == "package.json":
+        return _version_de_package_json(texto)
+    return texto.strip() or None
+
+
 def _read_version() -> dict[str, Any]:
-    if VERSION_FILE_PATH.exists():
-        return {
-            "version": VERSION_FILE_PATH.read_text().strip(),
-            "service": SERVICE,
-        }
-    return {"version": None, "service": SERVICE}
+    version = _version_del_archivo(VERSION_FILE_PATH) if VERSION_FILE_PATH.exists() else None
+    payload: dict[str, Any] = {"version": version, "service": SERVICE}
+    released_at = _released_at()
+    if released_at:
+        payload["released_at"] = released_at
+    return payload
+
+
+def _released_at() -> str | None:
+    if not CHANGELOG_FILE_PATH.exists():
+        return None
+    try:
+        texto = CHANGELOG_FILE_PATH.read_text()
+    except OSError:
+        return None
+    match = re.search(r"^##\s*\[[^\]]+\]\s*-\s*(\d{4}-\d{2}-\d{2})", texto, re.MULTILINE)
+    return match.group(1) if match else None
 
 
 def _deployed_at() -> str:

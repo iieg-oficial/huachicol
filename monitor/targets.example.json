@@ -33,6 +33,12 @@
     "url": "http://mariachi-api:8000/ontoy"
   },
   {
+    "slug": "sitio2026",
+    "label": "Portalito",
+    "url": "http://portalito-version-api:8088/ontoy",
+    "comment": "Sidecar: sitio2026 no expone /ontoy y no se le toca el repo. Lo sirve compose.ontoy.yaml de este repo, desplegado en el nodo del portalito. Multi-VM: usar http://<PORTALITO>:8092/ontoy"
+  },
+  {
     "slug": "gateway-hub",
     "label": "Gateway Hub",
     "url": "http://gateway-hub-nginx-1:80/ontoy"

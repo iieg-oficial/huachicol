@@ -8,6 +8,17 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.10.0] - 2026-08-27
+
+### Agregado: el propio `version-api` de huachicol declara su nodo
+
+Cierra la propagacion del contrato: los siete `ontoy_server.py` del ecosistema quedan identicos y
+cada uno declara su nodo. huachicol es el **reportero de S1**, donde tambien viven gateway-hub,
+acervo y mariachi: los tres van en `ONTOY_NODE_REPORTER=false` y la maquina se mide una sola vez.
+
+Con eso `/api/nodos` agrupa de verdad: S1 con sus cuatro repos y once contenedores, S2 con mapalab,
+S3 con sextante, S4 con dataengine y S5 con el portalito.
+
 ## [2.9.0] - 2026-08-27
 
 ### Agregado: el `/ontoy` habla de la maquina, no solo del servicio

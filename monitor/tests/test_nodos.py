@@ -73,3 +73,43 @@ class AgruparPorNodoTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DetalleDelNodoTest(unittest.TestCase):
+    def _servicio(self, slug, node, **extra):
+        base = servicio(slug, node)
+        base.update(extra)
+        return base
+
+    def test_el_disco_del_reportero_llega_al_bloque_host(self):
+        s = self._servicio("huachicol", "S1", host={"cores": 8})
+        s["checks"]["disk"] = {"status": "ok", "used_percent": 41.3, "free_gb": 248.6}
+        nodos = _agrupar_por_nodo([s])
+        self.assertEqual(nodos[0]["host"]["disk_used_percent"], 41.3)
+        self.assertEqual(nodos[0]["host"]["disk_free_gb"], 248.6)
+
+    def test_el_disco_de_quien_no_reporta_no_contamina_el_nodo(self):
+        s = self._servicio("acervo", "S1")
+        s["checks"]["disk"] = {"status": "ok", "used_percent": 99.9, "free_gb": 1}
+        nodos = _agrupar_por_nodo([s])
+        self.assertNotIn("disk_used_percent", nodos[0]["host"])
+
+    def test_los_tramos_de_cada_servicio_viajan_para_dibujar_su_barra(self):
+        tramos = {"desde": "x", "celdas": 1440, "tramos": [{"min": 0, "dur": 1440, "estado": "ok"}]}
+        nodos = _agrupar_por_nodo([self._servicio("mariachi", "S1", uptime_tramos=tramos)])
+        self.assertEqual(nodos[0]["servicios"][0]["uptime_tramos"]["celdas"], 1440)
+
+    def test_los_contenedores_de_todos_los_servicios_del_nodo_se_juntan(self):
+        uno = self._servicio("mariachi", "S1", containers=[{"name": "mariachi-api"}])
+        dos = self._servicio("acervo", "S1", containers=[{"name": "acervo-seaweedfs"}])
+        nodos = _agrupar_por_nodo([uno, dos])
+        self.assertEqual(
+            [c["name"] for c in nodos[0]["contenedores"]],
+            ["acervo-seaweedfs", "mariachi-api"],
+        )
+
+    def test_el_motivo_del_fallo_acompana_al_servicio(self):
+        nodos = _agrupar_por_nodo([
+            self._servicio("gateway-hub", "S1", status="down", detail="plugin_qgis (HTTP 404)"),
+        ])
+        self.assertEqual(nodos[0]["servicios"][0]["detail"], "plugin_qgis (HTTP 404)")

@@ -58,20 +58,34 @@ def _agrupar_por_nodo(servicios: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "host": {},
             "peers": {},
             "containers": {"total": 0, "running": 0},
+            "contenedores": [],
         })
         nodo["servicios"].append({
             "slug": servicio["slug"],
             "label": servicio["label"],
             "status": servicio["status"],
             "version": servicio["version"],
+            "detail": servicio.get("detail"),
+            "since_human": servicio.get("since_human"),
             "uptime_24h": servicio["uptime_24h"],
+            "uptime_tramos": servicio.get("uptime_tramos"),
+            "container_summary": servicio.get("container_summary"),
         })
+
+        checks = servicio.get("checks") or {}
         if servicio.get("host"):
-            nodo["host"] = servicio["host"]
+            nodo["host"] = dict(servicio["host"])
+            disco = checks.get("disk")
+            if isinstance(disco, dict):
+                nodo["host"]["disk_used_percent"] = disco.get("used_percent")
+                nodo["host"]["disk_free_gb"] = disco.get("free_gb")
+
         resumen = servicio.get("container_summary") or {}
         nodo["containers"]["total"] += resumen.get("total", 0)
         nodo["containers"]["running"] += resumen.get("running", 0)
-        for nombre, check in (servicio.get("checks") or {}).items():
+        nodo["contenedores"].extend(servicio.get("containers") or [])
+
+        for nombre, check in checks.items():
             if nombre.startswith("peer_"):
                 nodo["peers"][nombre[5:]] = check
 
@@ -83,6 +97,7 @@ def _agrupar_por_nodo(servicios: list[dict[str, Any]]) -> list[dict[str, Any]]:
             else "ok"
         )
         nodo["servicios"].sort(key=lambda s: s["slug"])
+        nodo["contenedores"].sort(key=lambda c: c.get("name") or "")
 
     return sorted(nodos.values(), key=lambda n: n["node"])
 

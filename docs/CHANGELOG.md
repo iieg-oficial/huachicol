@@ -8,6 +8,23 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.11.0] - 2026-08-27
+
+### Agregado: `/api/nodos` entrega el detalle completo de cada servidor
+
+La agrupacion por nodo recortaba los campos de cada servicio a cuatro, asi que el detalle de un nodo
+no podia reusar la fila del tablero de servicios y terminaba siendo una lista pobre. Ahora cada
+servicio del nodo viaja con su motivo de fallo, su desde-cuando, sus tramos de 24 horas y su resumen
+de contenedores: lo mismo que `/api/status`, con lo que el frontend pinta la misma fila en los dos
+lados.
+
+Se agregan ademas dos cosas que faltaban en el nodo: **el disco** —`disk_used_percent` y
+`disk_free_gb` del reportero, que estaban medidos desde siempre en el check `disk` y nadie subia al
+bloque de host— y **la lista de contenedores** de todos los servicios del nodo, no solo el conteo.
+
+El disco se toma unicamente del reportero: el de un servicio que comparte maquina diria lo mismo y
+el de uno que no la comparte mentiria.
+
 ## [2.10.0] - 2026-08-27
 
 ### Agregado: el propio `version-api` de huachicol declara su nodo

@@ -23,6 +23,8 @@ services:
       ONTOY_NODE_REPORTER: ${ONTOY_NODE_REPORTER:?}
       ONTOY_PEER_CHECKS: ${ONTOY_PEER_CHECKS}
       ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./VERSION:/app/VERSION:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

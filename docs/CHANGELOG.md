@@ -8,6 +8,22 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.8.0] - 2026-08-27
+
+### Agregado: el sidecar tambien enriquece a quien ya expone `/ontoy`
+
+mariachi sirve su `/ontoy` desde la propia API, con checks de aplicacion —`db`, `redis`, `abuso`,
+`mapalab_notify`— pero **cero contenedores**: un proceso de FastAPI no ve el socket de Docker y
+nunca los reporto. El campo estaba vacio desde que existe el contrato v2.
+
+`compose.ontoy.yaml` gana `ONTOY_UPSTREAM_URL`. Con ella el sidecar consulta el `/ontoy` del propio
+servicio, se queda con sus checks y les agrega los suyos: disco, puertos y los contenedores del
+proyecto. mariachi pasa de cuatro checks a siete y de cero contenedores a cinco, sin tocar una linea
+de su API.
+
+El target de mariachi apunta ahora al sidecar y no a `mariachi-api:8000`. Es el mismo endpoint con
+mas datos: quien consulte directo a la API sigue recibiendo lo de siempre.
+
 ## [2.7.0] - 2026-08-26
 
 ### Agregado: `/api/status` publica las 24 horas de cada servicio, comprimidas

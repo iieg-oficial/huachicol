@@ -30,7 +30,8 @@
   {
     "slug": "mariachi",
     "label": "Mariachi",
-    "url": "http://mariachi-api:8000/ontoy"
+    "url": "http://mariachi-version-api:8088/ontoy",
+    "comment": "Sidecar: el /ontoy de la API no ve el socket de Docker y reportaba cero contenedores. El sidecar de compose.ontoy.yaml mezcla sus checks con los contenedores del proyecto. Multi-VM: usar http://<S1>:8093/ontoy"
   },
   {
     "slug": "sitio2026",

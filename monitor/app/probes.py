@@ -29,6 +29,8 @@ class ProbeResult:
     latency_ms: int | None = None
     checks: dict[str, Any] = field(default_factory=dict)
     containers: list[dict[str, Any]] = field(default_factory=list)
+    node: str | None = None
+    host: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_failing(self) -> bool:
@@ -45,7 +47,7 @@ def _describe_checks(checks: dict[str, Any]) -> str | None:
     degraded: list[str] = []
     for name in sorted(checks):
         check = checks[name]
-        if not isinstance(check, dict):
+        if not isinstance(check, dict) or check.get("informativo"):
             continue
         status = check.get("status")
         if status in FAILING_STATUSES:
@@ -76,6 +78,10 @@ def _parse_payload(target: Target, payload: dict[str, Any], latency_ms: int) -> 
 
     detail = _describe_checks(checks)
 
+    host = payload.get("host") or {}
+    if not isinstance(host, dict):
+        host = {}
+
     return ProbeResult(
         slug=target.slug,
         label=target.label,
@@ -86,6 +92,8 @@ def _parse_payload(target: Target, payload: dict[str, Any], latency_ms: int) -> 
         latency_ms=latency_ms,
         checks=checks,
         containers=containers,
+        node=payload.get("node"),
+        host=host,
     )
 
 

@@ -38,12 +38,53 @@ def _state_to_public(
                 1 for c in state["containers"] if c.get("health") == "unhealthy"
             ),
         },
+        "node": state.get("node"),
+        "host": state.get("host") or {},
         "uptime_24h": store.uptime_percent(state["slug"], hours=24),
         "uptime_tramos": store.uptime_tramos(
             state["slug"], hours=24, resolucion_seg=resolucion_seg
         ),
         "alerted": state["alerted"],
     }
+
+
+def _agrupar_por_nodo(servicios: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    nodos: dict[str, dict[str, Any]] = {}
+    for servicio in servicios:
+        clave = servicio.get("node") or "sin-nodo"
+        nodo = nodos.setdefault(clave, {
+            "node": clave,
+            "servicios": [],
+            "host": {},
+            "peers": {},
+            "containers": {"total": 0, "running": 0},
+        })
+        nodo["servicios"].append({
+            "slug": servicio["slug"],
+            "label": servicio["label"],
+            "status": servicio["status"],
+            "version": servicio["version"],
+            "uptime_24h": servicio["uptime_24h"],
+        })
+        if servicio.get("host"):
+            nodo["host"] = servicio["host"]
+        resumen = servicio.get("container_summary") or {}
+        nodo["containers"]["total"] += resumen.get("total", 0)
+        nodo["containers"]["running"] += resumen.get("running", 0)
+        for nombre, check in (servicio.get("checks") or {}).items():
+            if nombre.startswith("peer_"):
+                nodo["peers"][nombre[5:]] = check
+
+    for nodo in nodos.values():
+        estados = [s["status"] for s in nodo["servicios"]]
+        nodo["status"] = (
+            "down" if any(e in ("down", "unreachable") for e in estados)
+            else "degraded" if "degraded" in estados
+            else "ok"
+        )
+        nodo["servicios"].sort(key=lambda s: s["slug"])
+
+    return sorted(nodos.values(), key=lambda n: n["node"])
 
 
 class MonitorApi:
@@ -110,6 +151,20 @@ class MonitorApi:
                     payload = _state_to_public(state, store, config.poll_interval)
                     payload["history"] = store.history(slug, limit=min(limit, 500))
                     self._json(200, payload)
+                    return
+
+                if path == "/api/nodos":
+                    states = store.all_states()
+                    servicios = [
+                        _state_to_public(s, store, config.poll_interval) for s in states
+                    ]
+                    nodos = _agrupar_por_nodo(servicios)
+                    limite = int((query.get("eventos") or ["20"])[0])
+                    self._json(200, {
+                        "environment": config.environment,
+                        "nodos": nodos,
+                        "eventos": store.recent_events(min(limite, 100)),
+                    })
                     return
 
                 if path == "/api/events":

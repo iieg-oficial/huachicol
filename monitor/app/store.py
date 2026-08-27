@@ -78,7 +78,19 @@ class Store:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(SCHEMA)
+        self._agregar_columnas_faltantes()
         self._conn.commit()
+
+    def _agregar_columnas_faltantes(self) -> None:
+        existentes = {
+            fila["name"]
+            for fila in self._conn.execute("PRAGMA table_info(service_state)").fetchall()
+        }
+        for columna in ("node", "host"):
+            if columna not in existentes:
+                self._conn.execute(
+                    f"ALTER TABLE service_state ADD COLUMN {columna} TEXT"
+                )
 
     def close(self) -> None:
         with self._lock:
@@ -101,6 +113,7 @@ class Store:
             state = dict(row)
             state["checks"] = json.loads(state["checks"]) if state["checks"] else {}
             state["containers"] = json.loads(state["containers"]) if state["containers"] else []
+            state["host"] = json.loads(state["host"]) if state.get("host") else {}
             state["alerted"] = bool(state["alerted"])
             states.append(state)
         return states
@@ -121,15 +134,17 @@ class Store:
         since: str,
         alerted: bool,
         alerted_at: str | None,
+        node: str | None = None,
+        host: dict[str, Any] | None = None,
     ) -> None:
         with self._lock:
             self._conn.execute(
                 """
                 INSERT INTO service_state (
                     slug, label, status, version, deployed_at, detail, checks, containers,
-                    latency_ms, consecutive_failures, consecutive_successes, since,
-                    last_checked, alerted, alerted_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    node, host, latency_ms, consecutive_failures, consecutive_successes,
+                    since, last_checked, alerted, alerted_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(slug) DO UPDATE SET
                     label=excluded.label,
                     status=excluded.status,
@@ -138,6 +153,8 @@ class Store:
                     detail=excluded.detail,
                     checks=excluded.checks,
                     containers=excluded.containers,
+                    node=excluded.node,
+                    host=excluded.host,
                     latency_ms=excluded.latency_ms,
                     consecutive_failures=excluded.consecutive_failures,
                     consecutive_successes=excluded.consecutive_successes,
@@ -150,6 +167,7 @@ class Store:
                     slug, label, status, version, deployed_at, detail,
                     json.dumps(checks, ensure_ascii=False),
                     json.dumps(containers, ensure_ascii=False),
+                    node, json.dumps(host or {}, ensure_ascii=False),
                     latency_ms, consecutive_failures, consecutive_successes, since,
                     _now(), int(alerted), alerted_at,
                 ),

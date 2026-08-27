@@ -8,6 +8,40 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.9.0] - 2026-08-27
+
+### Agregado: el `/ontoy` habla de la maquina, no solo del servicio
+
+Faltaban los cinco datos que hacen posible una vista por servidor. Ninguno pide un exporter: el
+sidecar ya corre en cada nodo y solo lee archivos de texto de `/proc`.
+
+- **`ONTOY_NODE`** etiqueta a que nodo pertenece cada servicio, que es lo que permite agrupar. El
+  mapeo repo → nodo vivia en `ecosistema/topologia.md`, escrito a mano; ahora viaja en los datos.
+- **`ONTOY_NODE_REPORTER`** designa un solo sidecar por nodo para hablar del host. En S1 corren
+  cuatro repos y sin esto se reportaria cuatro veces la misma maquina.
+- **Carga** de `/proc/loadavg`, dividida entre los nucleos: es lo unico que hace comparable a S4,
+  de cuatro nucleos, con S1, de ocho.
+- **RAM y swap** de `/proc/meminfo`, con `MemAvailable` y no `MemFree`, porque el cache no es
+  memoria perdida.
+- **Uptime** de `/proc/uptime`, para distinguir un servicio reiniciado de una maquina reiniciada.
+- **`ONTOY_PEER_CHECKS`**: una arista por vecino con su latencia, que es la conectividad entre
+  nodos que hasta hoy solo se probaba a mano al levantar una VM.
+
+### Agregado: `/api/nodos` agrupa los servicios por servidor
+
+Un servicio por nodo con su estado, sus contenedores sumados, las metricas del reportero y las
+aristas hacia sus vecinos, mas las transiciones recientes. `service_state` gana `node` y `host` con
+un `ALTER TABLE` idempotente, asi que la base existente no se toca.
+
+### Corregido: un host sudando ya no tumba al servicio
+
+`carga`, `memoria`, `swap` y las aristas quedan marcados `"informativo": true` y **no entran al
+estado global**. El estado sigue siendo un Y logico, pero solo de los checks criticos.
+
+Es el pendiente que dejo el ensayo de tamal-verde, donde un ZIP que no descargaba marco como caido
+al punto de entrada del ecosistema. Salio a la luz al probar esto: el swap de la maquina de
+desarrollo, al 71 %, dejaba a mariachi en `degraded` sin que nada le pasara.
+
 ## [2.8.0] - 2026-08-27
 
 ### Agregado: el sidecar tambien enriquece a quien ya expone `/ontoy`

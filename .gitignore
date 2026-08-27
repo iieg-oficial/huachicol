@@ -1,4 +1,6 @@
 .env
+.env.ontoy.*
+!.env.ontoy.example
 __pycache__/
 *.pyc
 monitor/targets.json

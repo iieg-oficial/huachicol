@@ -9,6 +9,7 @@ x-logging: &logging
 services:
   version-api:
     build: ./version-api
+    image: iieg/ontoy-server:latest
     container_name: ${ONTOY_CONTAINER_NAME:?}
     restart: unless-stopped
     environment:
@@ -17,6 +18,9 @@ services:
       ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
       ONTOY_PORT_CHECKS: ${ONTOY_PORT_CHECKS:?}
       ONTOY_UPSTREAM_URL: ${ONTOY_UPSTREAM_URL}
+      ONTOY_NODE: ${ONTOY_NODE:?}
+      ONTOY_NODE_REPORTER: ${ONTOY_NODE_REPORTER:?}
+      ONTOY_PEER_CHECKS: ${ONTOY_PEER_CHECKS}
       ONTOY_VERSION_FILE: ${ONTOY_VERSION_FILE:?}
       ONTOY_CHANGELOG_FILE: ${ONTOY_CHANGELOG_FILE:?}
     volumes:

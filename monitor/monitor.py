@@ -49,6 +49,8 @@ def run_cycle(config: Config, store: Store, notifier: Notifier) -> list[Event]:
             detail=state["detail"],
             checks=state["checks"],
             containers=state["containers"],
+            node=state["node"],
+            host=state["host"],
             latency_ms=state["latency_ms"],
             consecutive_failures=state["consecutive_failures"],
             consecutive_successes=state["consecutive_successes"],

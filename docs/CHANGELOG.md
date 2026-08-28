@@ -8,6 +8,18 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.13.0] - 2026-08-28
+
+### Agregado: la temperatura del CPU, cuando el equipo la expone
+
+Sale de `/sys/class/thermal`, que el contenedor ya ve sin montar nada, y se toma la zona mas caliente
+de las que reporten un valor creible. **En una VM normalmente no hay ninguna**, asi que el campo
+simplemente no aparece: es un dato de hierro, y en produccion solo lo daran los nodos que corran
+sobre metal.
+
+Va como check informativo, con umbrales en `ONTOY_TEMP_WARN` y `ONTOY_TEMP_CRITICAL` (70 y 85 grados
+por omision), asi que un equipo caliente se ve pero no marca al servicio como caido.
+
 ## [2.12.0] - 2026-08-28
 
 ### Agregado: el nodo reporta su sistema y sus puertos

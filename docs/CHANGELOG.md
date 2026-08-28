@@ -8,6 +8,21 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.16.0] - 2026-08-28
+
+### Agregado: uso real de CPU, core por core
+
+Hasta ahora el CPU se estimaba desde `loadavg`, que es **agregado y no es un porcentaje**: cuenta
+procesos en cola, no tiempo ocupado. `/proc/stat` si trae el detalle por core, pero en contadores
+acumulados desde el arranque, asi que un solo vistazo no dice nada.
+
+`_uso_por_core()` toma dos lecturas separadas por 150 ms y calcula el delta: devuelve el uso de cada
+core y su promedio en `cpu_used_percent`. El endpoint pasa de ~40 ms a ~190 ms, que cabe de sobra en
+el sondeo de 60 segundos y en el timeout de 2 s del monitor.
+
+El intervalo es `ONTOY_CPU_SAMPLE_SECONDS`. Bajarlo abarata la respuesta pero vuelve la medicion mas
+ruidosa: en menos de 100 ms un core que despierta un instante se ve al 100 %.
+
 ## [2.15.1] - 2026-08-28
 
 ### Agregado: la memoria dice cuanto es cache

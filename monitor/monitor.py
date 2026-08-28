@@ -61,6 +61,8 @@ def run_cycle(config: Config, store: Store, notifier: Notifier) -> list[Event]:
         store.record_check(
             result.slug, result.status, result.latency_ms, result.detail
         )
+        if result.node and result.host:
+            store.guardar_host(result.node, result.host, config.host_sample_interval)
 
         if event:
             events.append(event)

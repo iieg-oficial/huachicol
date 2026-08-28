@@ -191,6 +191,16 @@ class MonitorApi:
                     })
                     return
 
+                if path.startswith("/api/nodos/") and path.endswith("/historial"):
+                    nodo = path.split("/")[3]
+                    horas = int((query.get("horas") or ["24"])[0])
+                    self._json(200, {
+                        "nodo": nodo,
+                        "horas": min(horas, 168),
+                        "muestras": store.historial_host(nodo, horas=min(horas, 168)),
+                    })
+                    return
+
                 if path == "/api/events":
                     limit = int((query.get("limit") or ["50"])[0])
                     self._json(200, {"events": store.recent_events(min(limit, 200))})

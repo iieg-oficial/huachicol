@@ -8,6 +8,24 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.15.0] - 2026-08-28
+
+### Agregado: historial de las metricas de maquina
+
+`check_history` guardaba estado y latencia, nada del host: una temperatura suelta no dice si 78 grados
+son normales en esa maquina o si lleva tres dias subiendo. La tabla nueva `host_history` guarda la
+lectura completa del reportero de cada nodo, y `GET /api/nodos/{nodo}/historial` la devuelve.
+
+**Se muestrea cada cinco minutos, no cada sondeo.** Con cinco nodos son 1 440 filas al dia; a
+resolucion de minuto serian 7 200 para una curva que se ve igual, porque la temperatura no cambia de
+forma interesante en sesenta segundos. El intervalo es `MONITOR_HOST_SAMPLE_INTERVAL`.
+
+La poda existente se encarga de la tabla nueva con la misma retencion, asi que no hay un segundo
+reloj que vigilar.
+
+Sirve para la temperatura, que es lo que lo motivo, pero guarda todo el bloque `host`: carga, memoria
+y swap quedan disponibles para graficarse sin volver a tocar el monitor.
+
 ## [2.14.0] - 2026-08-28
 
 ### Cambiado: la temperatura pasa de un numero a una lista de sensores

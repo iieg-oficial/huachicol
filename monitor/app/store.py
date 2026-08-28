@@ -48,6 +48,15 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_events_time ON events (occurred_at);
 
+CREATE TABLE IF NOT EXISTS host_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nodo TEXT NOT NULL,
+    medido_en TEXT NOT NULL,
+    metricas TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_host_nodo_time ON host_history (nodo, medido_en);
+
 CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT
@@ -237,6 +246,49 @@ class Store:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def guardar_host(self, nodo: str, metricas: dict[str, Any], cada_seg: int) -> bool:
+        """Guarda una muestra si ya paso el intervalo. Devuelve si la guardo."""
+        if not nodo or not metricas:
+            return False
+
+        limite = (
+            datetime.now(timezone.utc) - timedelta(seconds=cada_seg)
+        ).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        with self._lock:
+            reciente = self._conn.execute(
+                "SELECT 1 FROM host_history WHERE nodo = ? AND medido_en >= ? LIMIT 1",
+                (nodo, limite),
+            ).fetchone()
+            if reciente:
+                return False
+            self._conn.execute(
+                "INSERT INTO host_history (nodo, medido_en, metricas) VALUES (?,?,?)",
+                (nodo, _now(), json.dumps(metricas, ensure_ascii=False)),
+            )
+            self._conn.commit()
+        return True
+
+    def historial_host(self, nodo: str, horas: int = 24) -> list[dict[str, Any]]:
+        desde = (
+            datetime.now(timezone.utc) - timedelta(hours=horas)
+        ).isoformat(timespec="seconds").replace("+00:00", "Z")
+        with self._lock:
+            filas = self._conn.execute(
+                "SELECT medido_en, metricas FROM host_history"
+                " WHERE nodo = ? AND medido_en >= ? ORDER BY medido_en ASC",
+                (nodo, desde),
+            ).fetchall()
+
+        muestras = []
+        for fila in filas:
+            try:
+                metricas = json.loads(fila["metricas"])
+            except json.JSONDecodeError:
+                continue
+            muestras.append({"medido_en": fila["medido_en"], **metricas})
+        return muestras
+
     def uptime_tramos(
         self, slug: str, hours: int = 24, resolucion_seg: int = 60
     ) -> dict[str, Any]:
@@ -343,6 +395,7 @@ class Store:
             cursor = self._conn.execute(
                 "DELETE FROM check_history WHERE checked_at < ?", (cutoff,)
             )
+            self._conn.execute("DELETE FROM host_history WHERE medido_en < ?", (cutoff,))
             self._conn.execute("DELETE FROM events WHERE occurred_at < ?", (cutoff,))
             self._conn.commit()
             return cursor.rowcount

@@ -59,6 +59,7 @@ def _agrupar_por_nodo(servicios: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "peers": {},
             "containers": {"total": 0, "running": 0},
             "contenedores": [],
+            "puertos": [],
         })
         nodo["servicios"].append({
             "slug": servicio["slug"],
@@ -88,6 +89,13 @@ def _agrupar_por_nodo(servicios: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for nombre, check in checks.items():
             if nombre.startswith("peer_"):
                 nodo["peers"][nombre[5:]] = check
+            elif isinstance(check, dict) and check.get("port") is not None:
+                nodo["puertos"].append({
+                    "nombre": nombre,
+                    "puerto": check["port"],
+                    "status": check.get("status"),
+                    "servicio": servicio["slug"],
+                })
 
     for nodo in nodos.values():
         estados = [s["status"] for s in nodo["servicios"]]
@@ -98,6 +106,7 @@ def _agrupar_por_nodo(servicios: list[dict[str, Any]]) -> list[dict[str, Any]]:
         )
         nodo["servicios"].sort(key=lambda s: s["slug"])
         nodo["contenedores"].sort(key=lambda c: c.get("name") or "")
+        nodo["puertos"].sort(key=lambda p: p["puerto"])
 
     return sorted(nodos.values(), key=lambda n: n["node"])
 

@@ -8,6 +8,28 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.12.0] - 2026-08-28
+
+### Agregado: el nodo reporta su sistema y sus puertos
+
+`/proc/version` da el kernel sin montar nada, porque no esta aislado por namespace. El nombre del
+sistema si exige montar `/etc/os-release` del anfitrion, que es un volumen de solo lectura mas. La IP
+va por `ONTOY_NODE_IP` y no se mide: es un valor sensible que no se versiona, asi que vive en el
+`.env` de cada nodo.
+
+`/api/nodos` lista ademas **los puertos** que el nodo vigila, con cual responde y cual no, sacados de
+los checks que ya traian `port`. Antes ese dato solo se veia como un check suelto por servicio.
+
+### Corregido: un vecino que no resuelve dejaba el `/ontoy` fuera de tiempo
+
+Al estrenar `ONTOY_PEER_CHECKS` con destinos que no resolvian, el endpoint pasaba de 40 ms a **5
+segundos** y el monitor lo marcaba `timed out`: mapalab y sextante aparecieron caidos sin estarlo.
+
+El timeout de las aristas baja a 0.8 s y se separa del de dependencias (`ONTOY_PEER_TIMEOUT`). Ojo
+con la causa real: `socket.create_connection` acota la conexion pero **no la resolucion de nombres**,
+asi que un vecino mal escrito sigue costando lo que tarde el DNS en rendirse. La arista se apunta a
+un destino que el contenedor resuelva de verdad.
+
 ## [2.11.0] - 2026-08-27
 
 ### Agregado: `/api/nodos` entrega el detalle completo de cada servidor

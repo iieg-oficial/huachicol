@@ -113,3 +113,33 @@ class DetalleDelNodoTest(unittest.TestCase):
             self._servicio("gateway-hub", "S1", status="down", detail="plugin_qgis (HTTP 404)"),
         ])
         self.assertEqual(nodos[0]["servicios"][0]["detail"], "plugin_qgis (HTTP 404)")
+
+
+class PuertosDelNodoTest(unittest.TestCase):
+    def test_los_checks_con_puerto_se_listan_aparte(self):
+        s = servicio("gateway-hub", "S1")
+        s["checks"]["mapalab"] = {"status": "ok", "port": 80}
+        s["checks"]["acervo"] = {"status": "ok", "port": 8333}
+        nodos = _agrupar_por_nodo([s])
+        self.assertEqual(
+            [(p["nombre"], p["puerto"]) for p in nodos[0]["puertos"]],
+            [("mapalab", 80), ("acervo", 8333)],
+        )
+
+    def test_un_puerto_que_no_responde_conserva_su_estado(self):
+        s = servicio("gateway-hub", "S1")
+        s["checks"]["sextante"] = {"status": "down", "port": 8080}
+        nodos = _agrupar_por_nodo([s])
+        self.assertEqual(nodos[0]["puertos"][0]["status"], "down")
+
+    def test_las_aristas_no_se_cuelan_entre_los_puertos(self):
+        s = servicio("gateway-hub", "S1", peers={"S4": {"status": "ok", "port": 6432, "latency_ms": 3}})
+        nodos = _agrupar_por_nodo([s])
+        self.assertEqual(nodos[0]["puertos"], [])
+        self.assertIn("S4", nodos[0]["peers"])
+
+    def test_el_puerto_dice_de_que_servicio_viene(self):
+        uno = servicio("gateway-hub", "S1")
+        uno["checks"]["mapalab"] = {"status": "ok", "port": 80}
+        nodos = _agrupar_por_nodo([uno])
+        self.assertEqual(nodos[0]["puertos"][0]["servicio"], "gateway-hub")

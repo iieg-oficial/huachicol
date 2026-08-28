@@ -8,6 +8,22 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.14.0] - 2026-08-28
+
+### Cambiado: la temperatura pasa de un numero a una lista de sensores
+
+2.13.0 reportaba una sola cifra, la zona mas caliente, sin decir de que. Ahora se lee `/sys/class/hwmon`
+—la fuente estandar— y se traduce a nombres que significan algo: **CPU** (`coretemp`, `k10temp`),
+**Sistema** (`acpitz`), **Disco** (`nvme`) y **Graficos** (`amdgpu`, `nouveau`, `i915`).
+
+De cada chip se toma la lectura del paquete cuando la declara (`Package id 0`, `Composite`, `Tctl`) y
+si no, la mas alta de sus sensores: en un CPU de veinte nucleos interesa el paquete, no los trece
+valores por nucleo. Las lecturas fuera de rango o en cero se descartan, que es lo que reportan los
+sensores de wifi apagados.
+
+`thermal_zone` queda como respaldo para equipos sin hwmon, y `cpu_celsius` se conserva. El check sigue
+siendo informativo y usa el sensor mas caliente.
+
 ## [2.13.0] - 2026-08-28
 
 ### Agregado: la temperatura del CPU, cuando el equipo la expone

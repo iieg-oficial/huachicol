@@ -8,6 +8,18 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.15.1] - 2026-08-28
+
+### Agregado: la memoria dice cuanto es cache
+
+`memory_used_gb` sale de `MemTotal - MemAvailable`, que es lo correcto —el page cache se libera en
+cuanto una aplicacion lo pide, asi que no es memoria gastada— pero al no publicar el cache no habia
+como cuadrar la cifra contra `top`, donde el mismo equipo se lee «1.9 libre, 11 en buff/cache».
+
+Se agregan `memory_cache_gb` (Cached + Buffers) y `memory_free_gb`. La suma de usado, cache y libre no
+da el total: el resto es slab no reclamable, que es justo lo que `MemAvailable` ya descuenta y una
+resta a mano regalaria.
+
 ## [2.15.0] - 2026-08-28
 
 ### Agregado: historial de las metricas de maquina

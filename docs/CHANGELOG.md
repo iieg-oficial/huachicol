@@ -228,6 +228,33 @@ que el cliente puede decir por qué se cayó sin pedir el detalle del servicio.
 La resolución la manda `MONITOR_POLL_INTERVAL`: si el sondeo baja a diez minutos, la rejilla tiene
 144 celdas en vez de 1 440 y el payload encoge solo.
 
+## [2.6.1] - 2026-09-01
+
+### Agregado: sondas de rate limit sobre las rutas de assets del gateway
+
+**El monitor no puede ver esta clase de caida.** Sondea `/ontoy`, que es de las poquisimas rutas sin
+rate limit: el 2026-08-31 siguio reportando verde durante toda la inundacion, mientras el visor de
+mapas del portal publico estaba fuera de servicio. Nos enteramos por la consola del navegador.
+
+`Target` gana un campo `kind`, con `ontoy` por defecto —los targets existentes no cambian— y un valor
+nuevo `ratelimit`, que hace `HEAD` y clasifica por codigo: **429 va a `down`**, 5xx a `down`, y todo
+lo demas a `ok`.
+
+Que un 404 cuente como `ok` es deliberado: la sonda mide **rechazo, no existencia**. Por eso las dos
+URLs son centinelas inventados y no nombres de bundle reales — Vite les cambia el hash en cada
+deploy y la sonda se romperia sola en cada release.
+
+| slug | ruta | que vigila |
+|---|---|---|
+| `mapalab-assets` | `/mapalab/assets/ontoy-probe.js` | el fusible de los bundles del visor |
+| `acervo-files` | `/acervo/ontoy-probe` | la ruta que se inundo el 2026-08-31 |
+
+`targets.json` no se versiona: hay que dar de alta las dos entradas en el de cada nodo y recrear el
+contenedor, porque el bind queda cacheado.
+
+Va tambien en `tamal-rojo` como 2.17.0.
+
+
 ## [2.6.0] - 2026-08-26
 
 ### Agregado: un `/ontoy` de encargo para servicios que no lo exponen

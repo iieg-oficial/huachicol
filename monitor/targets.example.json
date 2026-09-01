@@ -47,5 +47,19 @@
     "slug": "sieej",
     "label": "SIEEJ",
     "url": "http://gateway-hub-nginx-1/sieej/ontoy"
+  },
+  {
+    "slug": "mapalab-assets",
+    "label": "MapaLab assets",
+    "url": "http://gateway-hub-nginx-1/mapalab/assets/ontoy-probe.js",
+    "kind": "ratelimit",
+    "comment": "Sonda de rate limit, no de existencia: la ruta es un centinela y su 404 cuenta como ok. Solo alerta con 429, que es el gateway rechazando los bundles del visor. No usar un nombre real de bundle: Vite les cambia el hash en cada deploy"
+  },
+  {
+    "slug": "acervo-files",
+    "label": "Acervo files",
+    "url": "http://gateway-hub-nginx-1/acervo/ontoy-probe",
+    "kind": "ratelimit",
+    "comment": "Misma sonda sobre la ruta que se inundo el 2026-08-31. Con las zonas separadas del gateway, un 429 aqui ya no implica que el visor este caido: son fusibles distintos"
   }
 ]

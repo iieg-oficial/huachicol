@@ -60,5 +60,19 @@
     "label": "Vine",
     "url": "http://<VINE_WACHA>:8089/ontoy",
     "comment": "Comparte VM con wacha, asi que su sidecar no puede usar el 8088: se publica en ONTOY_PORT=8089. Fusiona los checks del backend (db, zkteco_sync, checkins_today)"
+  },
+  {
+    "slug": "mapalab-assets",
+    "label": "MapaLab assets",
+    "url": "http://gateway-hub-nginx-1/mapalab/assets/ontoy-probe.js",
+    "kind": "ratelimit",
+    "comment": "Sonda de rate limit, no de existencia: la ruta es un centinela y su 404 cuenta como ok. Solo alerta con 429, que es el gateway rechazando los bundles del visor. No usar un nombre real de bundle: Vite les cambia el hash en cada deploy"
+  },
+  {
+    "slug": "acervo-files",
+    "label": "Acervo files",
+    "url": "http://gateway-hub-nginx-1/acervo/ontoy-probe",
+    "kind": "ratelimit",
+    "comment": "Misma sonda sobre la ruta que se inundo el 2026-08-31. Con las zonas separadas de gateway 1.47.0, un 429 aqui ya no implica que el visor este caido: son fusibles distintos"
   }
 ]

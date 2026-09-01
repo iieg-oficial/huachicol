@@ -7,12 +7,14 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.config import Target
+from app.config import KIND_RATELIMIT, Target
 
 STATUS_OK = "ok"
 STATUS_DEGRADED = "degraded"
 STATUS_DOWN = "down"
 STATUS_UNREACHABLE = "unreachable"
+RATE_LIMITED_STATUS = 429
+USER_AGENT = "huachicol-monitor/1.0"
 
 VALID_STATUSES = {STATUS_OK, STATUS_DEGRADED, STATUS_DOWN}
 FAILING_STATUSES = {STATUS_DOWN, STATUS_UNREACHABLE}
@@ -97,12 +99,51 @@ def _parse_payload(target: Target, payload: dict[str, Any], latency_ms: int) -> 
     )
 
 
+def _probe_ratelimit(target: Target) -> ProbeResult:
+    started = time.monotonic()
+    request = urllib.request.Request(
+        target.url,
+        method="HEAD",
+        headers={"User-Agent": USER_AGENT},
+    )
+
+    def result(status: str, detail: str) -> ProbeResult:
+        return ProbeResult(
+            slug=target.slug,
+            label=target.label,
+            status=status,
+            detail=detail,
+            latency_ms=int((time.monotonic() - started) * 1000),
+        )
+
+    try:
+        with urllib.request.urlopen(request, timeout=target.timeout) as response:
+            return result(STATUS_OK, f"HTTP {response.status}")
+
+    except urllib.error.HTTPError as exc:
+        if exc.code == RATE_LIMITED_STATUS:
+            return result(STATUS_DOWN, "HTTP 429: el gateway rechaza por rate limit")
+        if exc.code >= 500:
+            return result(STATUS_DOWN, f"HTTP {exc.code}")
+        return result(STATUS_OK, f"HTTP {exc.code}")
+
+    except (urllib.error.URLError, socket.timeout, TimeoutError) as exc:
+        reason = getattr(exc, "reason", exc)
+        return result(STATUS_UNREACHABLE, str(reason)[:160])
+
+    except Exception as exc:
+        return result(STATUS_UNREACHABLE, str(exc)[:160])
+
+
 def probe(target: Target) -> ProbeResult:
+    if target.kind == KIND_RATELIMIT:
+        return _probe_ratelimit(target)
+
     started = time.monotonic()
     request = urllib.request.Request(
         target.url,
         method="GET",
-        headers={"User-Agent": "huachicol-monitor/1.0", "Accept": "application/json"},
+        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
     )
 
     try:

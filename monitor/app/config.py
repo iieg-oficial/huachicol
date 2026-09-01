@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_TIMEOUT = 5.0
+KIND_ONTOY = "ontoy"
+KIND_RATELIMIT = "ratelimit"
+VALID_KINDS = {KIND_ONTOY, KIND_RATELIMIT}
 
 
 @dataclass(frozen=True)
@@ -13,6 +16,7 @@ class Target:
     url: str
     timeout: float = DEFAULT_TIMEOUT
     critical: bool = True
+    kind: str = KIND_ONTOY
 
 
 @dataclass(frozen=True)
@@ -81,12 +85,16 @@ def load_targets(path: Path) -> list[Target]:
         if slug in seen:
             raise ValueError(f"slug duplicado en targets.json: {slug}")
         seen.add(slug)
+        kind = str(item.get("kind") or KIND_ONTOY).strip()
+        if kind not in VALID_KINDS:
+            raise ValueError(f"kind invalido en targets.json para {slug}: {kind}")
         targets.append(Target(
             slug=slug,
             label=str(item.get("label") or slug),
             url=url,
             timeout=float(item.get("timeout") or DEFAULT_TIMEOUT),
             critical=bool(item.get("critical", True)),
+            kind=kind,
         ))
     if not targets:
         raise ValueError("targets.json no contiene ningun target valido")

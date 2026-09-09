@@ -8,3 +8,7 @@ secrets/*
 !secrets/.gitkeep
 !secrets/*.example
 compose.local.yaml
+
+# Instancias del sidecar ontoy por servicio vigilado
+.env.ontoy.*
+!.env.ontoy.example

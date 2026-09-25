@@ -14,3 +14,7 @@ compose.local.yaml
 # Instancias del sidecar ontoy por servicio vigilado
 .env.ontoy.*
 !.env.ontoy.example
+
+*.bak
+*.bak-*
+*.bak.*

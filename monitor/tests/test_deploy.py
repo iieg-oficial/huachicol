@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.api import token_valido
 from app.store import Store
 
 
@@ -41,6 +42,21 @@ class DeployStateTest(unittest.TestCase):
         state = self.store.deploy_state()
         self.assertFalse(state["active"])
         self.assertIsNotNone(state["until"])
+
+
+class DeployTokenTest(unittest.TestCase):
+    def test_sin_token_configurado_se_rechaza_todo(self) -> None:
+        self.assertFalse(token_valido("", "cualquiera"))
+        self.assertFalse(token_valido("", ""))
+
+    def test_sin_header_se_rechaza(self) -> None:
+        self.assertFalse(token_valido("secreto", None))
+
+    def test_token_distinto_se_rechaza(self) -> None:
+        self.assertFalse(token_valido("secreto", "otro"))
+
+    def test_token_correcto_pasa(self) -> None:
+        self.assertTrue(token_valido("secreto", "secreto"))
 
 
 if __name__ == "__main__":

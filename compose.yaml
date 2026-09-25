@@ -12,6 +12,22 @@ x-healthcheck: &healthcheck
   retries: 3
 
 services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: huachicol-docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      EVENTS: 0
+      PING: 0
+      VERSION: 0
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    logging: *logging
+
   version-api:
     build: ./version-api
     container_name: huachicol-version-api
@@ -23,17 +39,30 @@ services:
       ONTOY_NODE_REPORTER: ${ONTOY_NODE_REPORTER:?}
       ONTOY_PEER_CHECKS: ${ONTOY_PEER_CHECKS}
       ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./VERSION:/app/VERSION:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/os-release:/host/etc/os-release:ro
+    depends_on:
+      - docker-socket-proxy
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/ontoy').read()"]
     networks:
       - iieg-network
+      - docker-api
+    logging: *logging
+
+  monitor-data-init:
+    image: python:3.13-alpine
+    user: "0:0"
+    command: ["chown", "-R", "10001:10001", "/data"]
+    volumes:
+      - monitor_data:/data
+    network_mode: none
+    restart: "no"
     logging: *logging
 
   monitor:
@@ -54,11 +83,15 @@ services:
       - discord_webhook_url
       - telegram_bot_token
       - monitor_deadman_url
+      - monitor_deploy_token
+    group_add:
+      - "${MONITOR_SECRETS_GID:?}"
     volumes:
       - ./monitor/targets.json:/app/targets.json:ro
       - monitor_data:/data
-    ports:
-      - "${MONITOR_BIND_ADDR:?}:${MONITOR_API_PORT:?}:8090"
+    depends_on:
+      monitor-data-init:
+        condition: service_completed_successfully
     networks:
       - iieg-network
     extra_hosts:
@@ -79,6 +112,9 @@ services:
 networks:
   iieg-network:
     external: true
+  docker-api:
+    name: huachicol-docker-api
+    internal: true
 
 volumes:
   monitor_data:
@@ -90,3 +126,5 @@ secrets:
     file: ./secrets/telegram_bot_token
   monitor_deadman_url:
     file: ./secrets/monitor_deadman_url
+  monitor_deploy_token:
+    file: ./secrets/monitor_deploy_token

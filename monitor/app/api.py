@@ -1,3 +1,4 @@
+import hmac
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -10,6 +11,13 @@ from app.notifiers import Notifier
 from app.store import Store
 
 SERVICE_VERSION = "1.0.0"
+DEPLOY_TOKEN_HEADER = "X-Deploy-Token"
+
+
+def token_valido(esperado: str, recibido: str | None) -> bool:
+    if not esperado or not recibido:
+        return False
+    return hmac.compare_digest(esperado.encode(), recibido.encode())
 
 
 def _state_to_public(
@@ -210,6 +218,14 @@ class MonitorApi:
 
             def do_POST(self) -> None:
                 path = urlparse(self.path).path.rstrip("/")
+
+                if path not in ("/api/deploy/start", "/api/deploy/end"):
+                    self._json(404, {"error": "not found"})
+                    return
+
+                if not token_valido(config.deploy_token, self.headers.get(DEPLOY_TOKEN_HEADER)):
+                    self._json(401, {"error": "token de despliegue invalido"})
+                    return
 
                 if path == "/api/deploy/start":
                     until = store.start_deploy(config.deploy_timeout)

@@ -7,6 +7,21 @@ x-logging: &logging
     max-file: "3"
 
 services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      EVENTS: 0
+      PING: 0
+      VERSION: 0
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    logging: *logging
+
   version-api:
     build: ./version-api
     image: iieg/ontoy-server:latest
@@ -23,11 +38,13 @@ services:
       ONTOY_PEER_CHECKS: ${ONTOY_PEER_CHECKS}
       ONTOY_VERSION_FILE: ${ONTOY_VERSION_FILE:?}
       ONTOY_CHANGELOG_FILE: ${ONTOY_CHANGELOG_FILE:?}
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
     volumes:
       - ${ONTOY_VERSION_SOURCE:?}:${ONTOY_VERSION_FILE:?}:ro
       - ${ONTOY_CHANGELOG_SOURCE:?}:${ONTOY_CHANGELOG_FILE:?}:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/os-release:/host/etc/os-release:ro
+    depends_on:
+      - docker-socket-proxy
     ports:
       - "${ONTOY_BIND_ADDR:?}:${ONTOY_PORT:?}:8088"
     healthcheck:
@@ -37,9 +54,12 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/ontoy').read()"]
     networks:
       - vigilado
+      - docker-api
     logging: *logging
 
 networks:
   vigilado:
     name: ${ONTOY_NETWORK:?}
     external: true
+  docker-api:
+    internal: true

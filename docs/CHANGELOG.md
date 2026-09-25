@@ -8,6 +8,48 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.18.0] - 2026-09-24
+
+### Cambiado: el sidecar `/ontoy` ya no toca el socket de Docker
+
+`version-api` monta ahora solo `VERSION` y `os-release`, y consulta los contenedores por
+`DOCKER_HOST=tcp://docker-socket-proxy:2375`: un `tecnativa/docker-socket-proxy:v0.5.0` con
+`CONTAINERS=1` y todo lo demás en 0 (sin `POST`), en la red interna `huachicol-docker-api`. El `:ro`
+del socket no limitaba la API. La imagen corre como uid 65534. `compose.ontoy.yaml`, del que salen
+los sidecars de mariachi, sitio2026 y frames, lleva el mismo proxy.
+
+### Cambiado: `ontoy_server.py` endurecido
+
+- Un error al armar el payload responde `500` con texto fijo; el detalle va a stderr.
+- El servidor acepta a lo más `ONTOY_MAX_THREADS` (8) peticiones simultáneas, corta clientes lentos a
+  los `ONTOY_REQUEST_TIMEOUT` (5 s) y reutiliza el payload durante `ONTOY_CACHE_SECONDS` (2 s).
+- El uso por core ya no duerme 150 ms en cada petición: se calcula contra la lectura anterior, que se
+  toma al arrancar. `ONTOY_CPU_SAMPLE_SECONDS` deja de existir.
+- Un fallo de la API de Docker se reporta como «no se pudo consultar la API de Docker», sin la
+  excepción cruda.
+
+Las copias de acervo, dataengine, gateway-hub, mapalab, sextante y vine son idénticas a esta.
+
+### Cambiado: la ventana de despliegue pide token
+
+`POST /api/deploy/start` y `/end` respondían a cualquiera en la LAN, que podía silenciar las alertas.
+Ahora exigen el header `X-Deploy-Token` con el contenido del secret `monitor_deploy_token`; sin secret,
+se rechaza todo. Desde el host: `docker exec huachicol-monitor python -m app.ventana start` (o `end`).
+
+### Cambiado: el monitor deja de publicar el 8090 y corre sin root
+
+Su único consumidor es mariachi, por `iieg-network` (`http://huachicol-monitor:8090`), así que el
+puerto ya no se publica en el host; `MONITOR_BIND_ADDR` y `MONITOR_API_PORT` salen del `.env`. Las
+consultas manuales van por `docker exec huachicol-monitor wget -qO- http://127.0.0.1:8090/api/status`.
+El monitor corre como uid 10001, lee los secrets por `group_add` (`MONITOR_SECRETS_GID`) y el servicio
+`monitor-data-init` ajusta el dueño del volumen `monitor_data` antes de arrancarlo.
+
+### Al desplegar
+
+Crear `secrets/monitor_deploy_token` (`0640`, grupo de `MONITOR_SECRETS_GID`) y poner los otros tres
+secrets en el mismo grupo; agregar `MONITOR_SECRETS_GID` al `.env`. En los `ONTOY_PEER_CHECKS`, la
+arista a S4 pasa del 6432 al 5432: dataengine 1.44.0 deja pgbouncer solo en `127.0.0.1`.
+
 ## [2.17.0] - 2026-09-01
 
 ### Agregado: sondas de rate limit sobre las rutas de assets del gateway

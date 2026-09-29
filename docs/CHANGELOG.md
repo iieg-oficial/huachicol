@@ -8,6 +8,12 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.18.2] - 2026-09-29
+
+### Corregido
+
+- El proxy del socket de Docker del sidecar `/ontoy` deja de ser `tecnativa/docker-socket-proxy`: con `CONTAINERS=1` también dejaba pedir `/containers/{id}/json` (el entorno, con secretos), `logs` y `archive` de cualquier contenedor del host. Ahora es `nginx:1.30.4-alpine` sin root, de solo lectura y sin capacidades, con `version-api/docker-proxy.conf`, que solo deja pasar `GET /containers/json` (con o sin prefijo `/vX.Y/`) y responde 403 a todo lo demás. Pide `DOCKER_GID` en el `.env`. También cubre `compose.ontoy.yaml`, así que los `.env.ontoy.*` (mariachi, frames, portalito) necesitan `DOCKER_GID`.
+
 ## [2.18.1] - 2026-09-29
 
 ### Corregido

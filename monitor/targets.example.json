@@ -50,8 +50,8 @@
     "url": "http://gateway-hub-nginx-1/sieej/ontoy"
   },
   {
-    "slug": "wacha",
-    "label": "Wacha",
+    "slug": "frames",
+    "label": "Frames",
     "url": "http://<VINE_WACHA>:8088/ontoy",
     "comment": "Vive fuera del esquema S1-S5, en la VM vine-wacha. Siempre por IP y puerto publicado: no comparte iieg-network con el monitor"
   },
@@ -59,7 +59,7 @@
     "slug": "vine",
     "label": "Vine",
     "url": "http://<VINE_WACHA>:8089/ontoy",
-    "comment": "Comparte VM con wacha, asi que su sidecar no puede usar el 8088: se publica en ONTOY_PORT=8089. Fusiona los checks del backend (db, zkteco_sync, checkins_today)"
+    "comment": "Comparte VM con frames, asi que su sidecar no puede usar el 8088: se publica en ONTOY_PORT=8089. Fusiona los checks del backend (db, zkteco_sync, checkins_today)"
   },
   {
     "slug": "mapalab-assets",

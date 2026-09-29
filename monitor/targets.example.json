@@ -74,5 +74,11 @@
     "url": "http://gateway-hub-nginx-1/acervo/ontoy-probe",
     "kind": "ratelimit",
     "comment": "Misma sonda sobre la ruta que se inundo el 2026-08-31. Con las zonas separadas de gateway 1.47.0, un 429 aqui ya no implica que el visor este caido: son fusibles distintos"
+  },
+  {
+    "slug": "minerva",
+    "label": "Minerva (SSO)",
+    "url": "http://<FORJA>/ontoy/minerva",
+    "comment": "JWKS por el gateway de la maquina del GitLab; solo abierto al segmento interno"
   }
 ]

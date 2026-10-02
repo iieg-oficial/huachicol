@@ -80,5 +80,11 @@
     "label": "Minerva (SSO)",
     "url": "http://<FORJA>/ontoy/minerva",
     "comment": "JWKS por el gateway de la maquina del GitLab; solo abierto al segmento interno"
+  },
+  {
+    "slug": "sieej-documentation",
+    "label": "Documentación SIEEJ",
+    "url": "http://<DOCIIEJ>:80/ontoy",
+    "comment": "VM 106 en Proxmox. Degradado si el sincronizador lleva más de 26 h sin correr o si mariachi no responde su /salud de sieej-documentacion"
   }
 ]

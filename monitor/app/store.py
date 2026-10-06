@@ -48,6 +48,15 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_events_time ON events (occurred_at);
 
+CREATE TABLE IF NOT EXISTS host_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nodo TEXT NOT NULL,
+    medido_en TEXT NOT NULL,
+    metricas TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_host_nodo_time ON host_history (nodo, medido_en);
+
 CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT
@@ -59,6 +68,17 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _iso(momento: datetime) -> str:
+    return momento.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _parse_iso(valor: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 class Store:
     def __init__(self, db_path: Path) -> None:
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -67,7 +87,19 @@ class Store:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(SCHEMA)
+        self._agregar_columnas_faltantes()
         self._conn.commit()
+
+    def _agregar_columnas_faltantes(self) -> None:
+        existentes = {
+            fila["name"]
+            for fila in self._conn.execute("PRAGMA table_info(service_state)").fetchall()
+        }
+        for columna in ("node", "host"):
+            if columna not in existentes:
+                self._conn.execute(
+                    f"ALTER TABLE service_state ADD COLUMN {columna} TEXT"
+                )
 
     def close(self) -> None:
         with self._lock:
@@ -90,6 +122,7 @@ class Store:
             state = dict(row)
             state["checks"] = json.loads(state["checks"]) if state["checks"] else {}
             state["containers"] = json.loads(state["containers"]) if state["containers"] else []
+            state["host"] = json.loads(state["host"]) if state.get("host") else {}
             state["alerted"] = bool(state["alerted"])
             states.append(state)
         return states
@@ -110,15 +143,17 @@ class Store:
         since: str,
         alerted: bool,
         alerted_at: str | None,
+        node: str | None = None,
+        host: dict[str, Any] | None = None,
     ) -> None:
         with self._lock:
             self._conn.execute(
                 """
                 INSERT INTO service_state (
                     slug, label, status, version, deployed_at, detail, checks, containers,
-                    latency_ms, consecutive_failures, consecutive_successes, since,
-                    last_checked, alerted, alerted_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    node, host, latency_ms, consecutive_failures, consecutive_successes,
+                    since, last_checked, alerted, alerted_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(slug) DO UPDATE SET
                     label=excluded.label,
                     status=excluded.status,
@@ -127,6 +162,8 @@ class Store:
                     detail=excluded.detail,
                     checks=excluded.checks,
                     containers=excluded.containers,
+                    node=excluded.node,
+                    host=excluded.host,
                     latency_ms=excluded.latency_ms,
                     consecutive_failures=excluded.consecutive_failures,
                     consecutive_successes=excluded.consecutive_successes,
@@ -139,6 +176,7 @@ class Store:
                     slug, label, status, version, deployed_at, detail,
                     json.dumps(checks, ensure_ascii=False),
                     json.dumps(containers, ensure_ascii=False),
+                    node, json.dumps(host or {}, ensure_ascii=False),
                     latency_ms, consecutive_failures, consecutive_successes, since,
                     _now(), int(alerted), alerted_at,
                 ),
@@ -208,6 +246,93 @@ class Store:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def guardar_host(self, nodo: str, metricas: dict[str, Any], cada_seg: int) -> bool:
+        """Guarda una muestra si ya paso el intervalo. Devuelve si la guardo."""
+        if not nodo or not metricas:
+            return False
+
+        limite = (
+            datetime.now(timezone.utc) - timedelta(seconds=cada_seg)
+        ).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        with self._lock:
+            reciente = self._conn.execute(
+                "SELECT 1 FROM host_history WHERE nodo = ? AND medido_en >= ? LIMIT 1",
+                (nodo, limite),
+            ).fetchone()
+            if reciente:
+                return False
+            self._conn.execute(
+                "INSERT INTO host_history (nodo, medido_en, metricas) VALUES (?,?,?)",
+                (nodo, _now(), json.dumps(metricas, ensure_ascii=False)),
+            )
+            self._conn.commit()
+        return True
+
+    def historial_host(self, nodo: str, horas: int = 24) -> list[dict[str, Any]]:
+        desde = (
+            datetime.now(timezone.utc) - timedelta(hours=horas)
+        ).isoformat(timespec="seconds").replace("+00:00", "Z")
+        with self._lock:
+            filas = self._conn.execute(
+                "SELECT medido_en, metricas FROM host_history"
+                " WHERE nodo = ? AND medido_en >= ? ORDER BY medido_en ASC",
+                (nodo, desde),
+            ).fetchall()
+
+        muestras = []
+        for fila in filas:
+            try:
+                metricas = json.loads(fila["metricas"])
+            except json.JSONDecodeError:
+                continue
+            muestras.append({"medido_en": fila["medido_en"], **metricas})
+        return muestras
+
+    def uptime_tramos(
+        self, slug: str, hours: int = 24, resolucion_seg: int = 60
+    ) -> dict[str, Any]:
+        paso = max(resolucion_seg, 1)
+        ahora = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        celdas = max(hours * 3600 // paso, 1)
+        desde = ahora - timedelta(seconds=celdas * paso)
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT checked_at, status, detail FROM check_history"
+                " WHERE slug = ? AND checked_at >= ? ORDER BY checked_at ASC",
+                (slug, _iso(desde)),
+            ).fetchall()
+
+        rejilla: list[tuple[str, str | None] | None] = [None] * celdas
+        for row in rows:
+            momento = _parse_iso(row["checked_at"])
+            if momento is None:
+                continue
+            indice = int((momento - desde).total_seconds()) // paso
+            if 0 <= indice < celdas:
+                rejilla[indice] = (row["status"], row["detail"])
+
+        tramos: list[dict[str, Any]] = []
+        for indice, celda in enumerate(rejilla):
+            estado = celda[0] if celda else "sin_datos"
+            detalle = celda[1] if celda else None
+            if tramos and tramos[-1]["estado"] == estado:
+                tramos[-1]["dur"] += 1
+                if detalle and not tramos[-1]["detalle"]:
+                    tramos[-1]["detalle"] = detalle
+                continue
+            tramos.append(
+                {"min": indice, "dur": 1, "estado": estado, "detalle": detalle}
+            )
+
+        return {
+            "desde": _iso(desde),
+            "hasta": _iso(ahora),
+            "resolucion_seg": paso,
+            "celdas": celdas,
+            "tramos": tramos,
+        }
+
     def uptime_percent(self, slug: str, hours: int = 24) -> float | None:
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat(
             timespec="seconds"
@@ -270,6 +395,7 @@ class Store:
             cursor = self._conn.execute(
                 "DELETE FROM check_history WHERE checked_at < ?", (cutoff,)
             )
+            self._conn.execute("DELETE FROM host_history WHERE medido_en < ?", (cutoff,))
             self._conn.execute("DELETE FROM events WHERE occurred_at < ?", (cutoff,))
             self._conn.commit()
             return cursor.rowcount

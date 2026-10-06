@@ -8,6 +8,280 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.18.2] - 2026-09-29
+
+### Corregido
+
+- El proxy del socket de Docker del sidecar `/ontoy` deja de ser `tecnativa/docker-socket-proxy`: con `CONTAINERS=1` también dejaba pedir `/containers/{id}/json` (el entorno, con secretos), `logs` y `archive` de cualquier contenedor del host. Ahora es `nginx:1.30.4-alpine` sin root, de solo lectura y sin capacidades, con `version-api/docker-proxy.conf`, que solo deja pasar `GET /containers/json` (con o sin prefijo `/vX.Y/`) y responde 403 a todo lo demás. Pide `DOCKER_GID` en el `.env`. También cubre `compose.ontoy.yaml`, así que los `.env.ontoy.*` (mariachi, frames, portalito) necesitan `DOCKER_GID`.
+
+## [2.18.1] - 2026-09-29
+
+### Corregido
+
+- El check `containers` de `/ontoy` ya no marca degradado un contenedor de un solo uso que terminó con código 0 (el `monitor-data-init` de huachicol), y el sidecar deja de contar su propia salud, que lo dejaba en `unhealthy` en cada arranque.
+
+## [2.18.0] - 2026-09-24
+
+### Cambiado: el sidecar `/ontoy` ya no toca el socket de Docker
+
+`version-api` monta ahora solo `VERSION` y `os-release`, y consulta los contenedores por
+`DOCKER_HOST=tcp://docker-socket-proxy:2375`: un `tecnativa/docker-socket-proxy:v0.5.0` con
+`CONTAINERS=1` y todo lo demás en 0 (sin `POST`), en la red interna `huachicol-docker-api`. El `:ro`
+del socket no limitaba la API. La imagen corre como uid 65534. `compose.ontoy.yaml`, del que salen
+los sidecars de mariachi, sitio2026 y frames, lleva el mismo proxy.
+
+### Cambiado: `ontoy_server.py` endurecido
+
+- Un error al armar el payload responde `500` con texto fijo; el detalle va a stderr.
+- El servidor acepta a lo más `ONTOY_MAX_THREADS` (8) peticiones simultáneas, corta clientes lentos a
+  los `ONTOY_REQUEST_TIMEOUT` (5 s) y reutiliza el payload durante `ONTOY_CACHE_SECONDS` (2 s).
+- El uso por core ya no duerme 150 ms en cada petición: se calcula contra la lectura anterior, que se
+  toma al arrancar. `ONTOY_CPU_SAMPLE_SECONDS` deja de existir.
+- Un fallo de la API de Docker se reporta como «no se pudo consultar la API de Docker», sin la
+  excepción cruda.
+
+Las copias de acervo, dataengine, gateway-hub, mapalab, sextante y vine son idénticas a esta.
+
+### Cambiado: la ventana de despliegue pide token
+
+`POST /api/deploy/start` y `/end` respondían a cualquiera en la LAN, que podía silenciar las alertas.
+Ahora exigen el header `X-Deploy-Token` con el contenido del secret `monitor_deploy_token`; sin secret,
+se rechaza todo. Desde el host: `docker exec huachicol-monitor python -m app.ventana start` (o `end`).
+
+### Cambiado: el monitor deja de publicar el 8090 y corre sin root
+
+Su único consumidor es mariachi, por `iieg-network` (`http://huachicol-monitor:8090`), así que el
+puerto ya no se publica en el host; `MONITOR_BIND_ADDR` y `MONITOR_API_PORT` salen del `.env`. Las
+consultas manuales van por `docker exec huachicol-monitor wget -qO- http://127.0.0.1:8090/api/status`.
+El monitor corre como uid 10001, lee los secrets por `group_add` (`MONITOR_SECRETS_GID`) y el servicio
+`monitor-data-init` ajusta el dueño del volumen `monitor_data` antes de arrancarlo.
+
+### Al desplegar
+
+Crear `secrets/monitor_deploy_token` (`0640`, grupo de `MONITOR_SECRETS_GID`) y poner los otros tres
+secrets en el mismo grupo; agregar `MONITOR_SECRETS_GID` al `.env`. En los `ONTOY_PEER_CHECKS`, la
+arista a S4 pasa del 6432 al 5432: dataengine 1.44.0 deja pgbouncer solo en `127.0.0.1`.
+
+## [2.17.0] - 2026-09-01
+
+### Agregado: sondas de rate limit sobre las rutas de assets del gateway
+
+**El monitor no puede ver esta clase de caida.** Sondea `/ontoy`, que es de las poquisimas rutas sin
+rate limit: el 2026-08-31 siguio reportando verde durante toda la inundacion, mientras el visor de
+mapas del portal publico estaba fuera de servicio. Nos enteramos por la consola del navegador.
+
+`Target` gana un campo `kind`, con `ontoy` por defecto —los once targets existentes no cambian— y un
+valor nuevo `ratelimit`, que hace `HEAD` y clasifica por codigo: **429 va a `down`**, 5xx a `down`,
+y todo lo demas a `ok`.
+
+Que un 404 cuente como `ok` es deliberado: la sonda mide **rechazo, no existencia**. Por eso las dos
+URLs de `targets.example.json` son centinelas inventados y no nombres de bundle reales — Vite les
+cambia el hash en cada deploy y la sonda se romperia sola en cada release.
+
+| slug | ruta | que vigila |
+|---|---|---|
+| `mapalab-assets` | `/mapalab/assets/ontoy-probe.js` | el fusible de los bundles del visor |
+| `acervo-files` | `/acervo/ontoy-probe` | la ruta que se inundo el 2026-08-31 |
+
+`targets.json` no se versiona: hay que dar de alta las dos entradas en el de cada nodo y recrear el
+contenedor, porque el bind queda cacheado.
+
+
+## [2.16.0] - 2026-08-28
+
+### Agregado: uso real de CPU, core por core
+
+Hasta ahora el CPU se estimaba desde `loadavg`, que es **agregado y no es un porcentaje**: cuenta
+procesos en cola, no tiempo ocupado. `/proc/stat` si trae el detalle por core, pero en contadores
+acumulados desde el arranque, asi que un solo vistazo no dice nada.
+
+`_uso_por_core()` toma dos lecturas separadas por 150 ms y calcula el delta: devuelve el uso de cada
+core y su promedio en `cpu_used_percent`. El endpoint pasa de ~40 ms a ~190 ms, que cabe de sobra en
+el sondeo de 60 segundos y en el timeout de 2 s del monitor.
+
+El intervalo es `ONTOY_CPU_SAMPLE_SECONDS`. Bajarlo abarata la respuesta pero vuelve la medicion mas
+ruidosa: en menos de 100 ms un core que despierta un instante se ve al 100 %.
+
+## [2.15.1] - 2026-08-28
+
+### Agregado: la memoria dice cuanto es cache
+
+`memory_used_gb` sale de `MemTotal - MemAvailable`, que es lo correcto —el page cache se libera en
+cuanto una aplicacion lo pide, asi que no es memoria gastada— pero al no publicar el cache no habia
+como cuadrar la cifra contra `top`, donde el mismo equipo se lee «1.9 libre, 11 en buff/cache».
+
+Se agregan `memory_cache_gb` (Cached + Buffers) y `memory_free_gb`. La suma de usado, cache y libre no
+da el total: el resto es slab no reclamable, que es justo lo que `MemAvailable` ya descuenta y una
+resta a mano regalaria.
+
+## [2.15.0] - 2026-08-28
+
+### Agregado: historial de las metricas de maquina
+
+`check_history` guardaba estado y latencia, nada del host: una temperatura suelta no dice si 78 grados
+son normales en esa maquina o si lleva tres dias subiendo. La tabla nueva `host_history` guarda la
+lectura completa del reportero de cada nodo, y `GET /api/nodos/{nodo}/historial` la devuelve.
+
+**Se muestrea cada cinco minutos, no cada sondeo.** Con cinco nodos son 1 440 filas al dia; a
+resolucion de minuto serian 7 200 para una curva que se ve igual, porque la temperatura no cambia de
+forma interesante en sesenta segundos. El intervalo es `MONITOR_HOST_SAMPLE_INTERVAL`.
+
+La poda existente se encarga de la tabla nueva con la misma retencion, asi que no hay un segundo
+reloj que vigilar.
+
+Sirve para la temperatura, que es lo que lo motivo, pero guarda todo el bloque `host`: carga, memoria
+y swap quedan disponibles para graficarse sin volver a tocar el monitor.
+
+## [2.14.0] - 2026-08-28
+
+### Cambiado: la temperatura pasa de un numero a una lista de sensores
+
+2.13.0 reportaba una sola cifra, la zona mas caliente, sin decir de que. Ahora se lee `/sys/class/hwmon`
+—la fuente estandar— y se traduce a nombres que significan algo: **CPU** (`coretemp`, `k10temp`),
+**Sistema** (`acpitz`), **Disco** (`nvme`) y **Graficos** (`amdgpu`, `nouveau`, `i915`).
+
+De cada chip se toma la lectura del paquete cuando la declara (`Package id 0`, `Composite`, `Tctl`) y
+si no, la mas alta de sus sensores: en un CPU de veinte nucleos interesa el paquete, no los trece
+valores por nucleo. Las lecturas fuera de rango o en cero se descartan, que es lo que reportan los
+sensores de wifi apagados.
+
+`thermal_zone` queda como respaldo para equipos sin hwmon, y `cpu_celsius` se conserva. El check sigue
+siendo informativo y usa el sensor mas caliente.
+
+## [2.13.0] - 2026-08-28
+
+### Agregado: la temperatura del CPU, cuando el equipo la expone
+
+Sale de `/sys/class/thermal`, que el contenedor ya ve sin montar nada, y se toma la zona mas caliente
+de las que reporten un valor creible. **En una VM normalmente no hay ninguna**, asi que el campo
+simplemente no aparece: es un dato de hierro, y en produccion solo lo daran los nodos que corran
+sobre metal.
+
+Va como check informativo, con umbrales en `ONTOY_TEMP_WARN` y `ONTOY_TEMP_CRITICAL` (70 y 85 grados
+por omision), asi que un equipo caliente se ve pero no marca al servicio como caido.
+
+## [2.12.0] - 2026-08-28
+
+### Agregado: el nodo reporta su sistema y sus puertos
+
+`/proc/version` da el kernel sin montar nada, porque no esta aislado por namespace. El nombre del
+sistema si exige montar `/etc/os-release` del anfitrion, que es un volumen de solo lectura mas. La IP
+va por `ONTOY_NODE_IP` y no se mide: es un valor sensible que no se versiona, asi que vive en el
+`.env` de cada nodo.
+
+`/api/nodos` lista ademas **los puertos** que el nodo vigila, con cual responde y cual no, sacados de
+los checks que ya traian `port`. Antes ese dato solo se veia como un check suelto por servicio.
+
+### Corregido: un vecino que no resuelve dejaba el `/ontoy` fuera de tiempo
+
+Al estrenar `ONTOY_PEER_CHECKS` con destinos que no resolvian, el endpoint pasaba de 40 ms a **5
+segundos** y el monitor lo marcaba `timed out`: mapalab y sextante aparecieron caidos sin estarlo.
+
+El timeout de las aristas baja a 0.8 s y se separa del de dependencias (`ONTOY_PEER_TIMEOUT`). Ojo
+con la causa real: `socket.create_connection` acota la conexion pero **no la resolucion de nombres**,
+asi que un vecino mal escrito sigue costando lo que tarde el DNS en rendirse. La arista se apunta a
+un destino que el contenedor resuelva de verdad.
+
+## [2.11.0] - 2026-08-27
+
+### Agregado: `/api/nodos` entrega el detalle completo de cada servidor
+
+La agrupacion por nodo recortaba los campos de cada servicio a cuatro, asi que el detalle de un nodo
+no podia reusar la fila del tablero de servicios y terminaba siendo una lista pobre. Ahora cada
+servicio del nodo viaja con su motivo de fallo, su desde-cuando, sus tramos de 24 horas y su resumen
+de contenedores: lo mismo que `/api/status`, con lo que el frontend pinta la misma fila en los dos
+lados.
+
+Se agregan ademas dos cosas que faltaban en el nodo: **el disco** —`disk_used_percent` y
+`disk_free_gb` del reportero, que estaban medidos desde siempre en el check `disk` y nadie subia al
+bloque de host— y **la lista de contenedores** de todos los servicios del nodo, no solo el conteo.
+
+El disco se toma unicamente del reportero: el de un servicio que comparte maquina diria lo mismo y
+el de uno que no la comparte mentiria.
+
+## [2.10.0] - 2026-08-27
+
+### Agregado: el propio `version-api` de huachicol declara su nodo
+
+Cierra la propagacion del contrato: los siete `ontoy_server.py` del ecosistema quedan identicos y
+cada uno declara su nodo. huachicol es el **reportero de S1**, donde tambien viven gateway-hub,
+acervo y mariachi: los tres van en `ONTOY_NODE_REPORTER=false` y la maquina se mide una sola vez.
+
+Con eso `/api/nodos` agrupa de verdad: S1 con sus cuatro repos y once contenedores, S2 con mapalab,
+S3 con sextante, S4 con dataengine y S5 con el portalito.
+
+## [2.9.0] - 2026-08-27
+
+### Agregado: el `/ontoy` habla de la maquina, no solo del servicio
+
+Faltaban los cinco datos que hacen posible una vista por servidor. Ninguno pide un exporter: el
+sidecar ya corre en cada nodo y solo lee archivos de texto de `/proc`.
+
+- **`ONTOY_NODE`** etiqueta a que nodo pertenece cada servicio, que es lo que permite agrupar. El
+  mapeo repo → nodo vivia en `ecosistema/topologia.md`, escrito a mano; ahora viaja en los datos.
+- **`ONTOY_NODE_REPORTER`** designa un solo sidecar por nodo para hablar del host. En S1 corren
+  cuatro repos y sin esto se reportaria cuatro veces la misma maquina.
+- **Carga** de `/proc/loadavg`, dividida entre los nucleos: es lo unico que hace comparable a S4,
+  de cuatro nucleos, con S1, de ocho.
+- **RAM y swap** de `/proc/meminfo`, con `MemAvailable` y no `MemFree`, porque el cache no es
+  memoria perdida.
+- **Uptime** de `/proc/uptime`, para distinguir un servicio reiniciado de una maquina reiniciada.
+- **`ONTOY_PEER_CHECKS`**: una arista por vecino con su latencia, que es la conectividad entre
+  nodos que hasta hoy solo se probaba a mano al levantar una VM.
+
+### Agregado: `/api/nodos` agrupa los servicios por servidor
+
+Un servicio por nodo con su estado, sus contenedores sumados, las metricas del reportero y las
+aristas hacia sus vecinos, mas las transiciones recientes. `service_state` gana `node` y `host` con
+un `ALTER TABLE` idempotente, asi que la base existente no se toca.
+
+### Corregido: un host sudando ya no tumba al servicio
+
+`carga`, `memoria`, `swap` y las aristas quedan marcados `"informativo": true` y **no entran al
+estado global**. El estado sigue siendo un Y logico, pero solo de los checks criticos.
+
+Es el pendiente que dejo el ensayo de tamal-verde, donde un ZIP que no descargaba marco como caido
+al punto de entrada del ecosistema. Salio a la luz al probar esto: el swap de la maquina de
+desarrollo, al 71 %, dejaba a mariachi en `degraded` sin que nada le pasara.
+
+## [2.8.0] - 2026-08-27
+
+### Agregado: el sidecar tambien enriquece a quien ya expone `/ontoy`
+
+mariachi sirve su `/ontoy` desde la propia API, con checks de aplicacion —`db`, `redis`, `abuso`,
+`mapalab_notify`— pero **cero contenedores**: un proceso de FastAPI no ve el socket de Docker y
+nunca los reporto. El campo estaba vacio desde que existe el contrato v2.
+
+`compose.ontoy.yaml` gana `ONTOY_UPSTREAM_URL`. Con ella el sidecar consulta el `/ontoy` del propio
+servicio, se queda con sus checks y les agrega los suyos: disco, puertos y los contenedores del
+proyecto. mariachi pasa de cuatro checks a siete y de cero contenedores a cinco, sin tocar una linea
+de su API.
+
+El target de mariachi apunta ahora al sidecar y no a `mariachi-api:8000`. Es el mismo endpoint con
+mas datos: quien consulte directo a la API sigue recibiendo lo de siempre.
+
+## [2.7.0] - 2026-08-26
+
+### Agregado: `/api/status` publica las 24 horas de cada servicio, comprimidas
+
+`check_history` guarda un renglón por sondeo —1 440 al día por servicio— y hasta ahora solo salía de
+ahí un número, `uptime_24h`, y el historial crudo del detalle por servicio. Con eso no se puede
+dibujar una barra de disponibilidad: agrupar por hora en el cliente esconde las caídas cortas, que
+son justo las que nadie alcanza a ver. Una caída de cuatro minutos deja su hora al 93 % y se pinta
+casi entera de verde.
+
+`Store.uptime_tramos()` arma una rejilla de una celda por sondeo sobre la ventana de 24 horas y la
+comprime a tramos consecutivos del mismo estado. La jornada completa de un servicio tranquilo cabe
+en un tramo; la de gateway-hub el día de la caída del ZIP, en quince. La respuesta de diez servicios
+pasó de 8 a 12 KB, con resolución de minuto en lugar de ninguna.
+
+Los huecos —el monitor apagado, un reinicio— salen como `sin_datos` y no como una caída, que es una
+distinción que antes no existía. El `detalle` del primer sondeo con motivo viaja pegado al tramo, así
+que el cliente puede decir por qué se cayó sin pedir el detalle del servicio.
+
+La resolución la manda `MONITOR_POLL_INTERVAL`: si el sondeo baja a diez minutos, la rejilla tiene
+144 celdas en vez de 1 440 y el payload encoge solo.
+
 ## [2.6.1] - 2026-09-01
 
 ### Agregado: sondas de rate limit sobre las rutas de assets del gateway
@@ -63,7 +337,6 @@ hoy nadie llenaba: sale de la primera entrada `## [x.y.z] - YYYY-MM-DD` del CHAN
 Con el portalito eso deja a la vista un desfase suyo: su `pyproject.toml` declara **1.8.0** y su
 CHANGELOG va en **1.9.1**, del 5 de agosto. El endpoint reporta lo que el repo dice, no lo que
 debería decir; corregirlo es un issue en su repositorio.
-
 ## [2.5.0] - 2026-08-03
 
 ### Corregido: los servicios retirados de `targets.json` ya no quedan de fantasma

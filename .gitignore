@@ -1,4 +1,6 @@
 .env
+.env.ontoy.*
+!.env.ontoy.example
 __pycache__/
 *.pyc
 monitor/targets.json
@@ -12,3 +14,7 @@ compose.local.yaml
 # Instancias del sidecar ontoy por servicio vigilado
 .env.ontoy.*
 !.env.ontoy.example
+
+*.bak
+*.bak-*
+*.bak.*

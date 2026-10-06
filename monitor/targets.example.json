@@ -30,7 +30,8 @@
   {
     "slug": "mariachi",
     "label": "Mariachi",
-    "url": "http://mariachi-api:8000/ontoy"
+    "url": "http://mariachi-version-api:8088/ontoy",
+    "comment": "Sidecar: el /ontoy de la API no ve el socket de Docker y reportaba cero contenedores. El sidecar de compose.ontoy.yaml mezcla sus checks con los contenedores del proyecto. Multi-VM: usar http://<S1>:8093/ontoy"
   },
   {
     "slug": "sitio2026",
@@ -49,6 +50,18 @@
     "url": "http://gateway-hub-nginx-1/sieej/ontoy"
   },
   {
+    "slug": "frames",
+    "label": "Frames",
+    "url": "http://<VINE_WACHA>:8088/ontoy",
+    "comment": "Vive fuera del esquema S1-S5, en la VM vine-wacha. Siempre por IP y puerto publicado: no comparte iieg-network con el monitor"
+  },
+  {
+    "slug": "vine",
+    "label": "Vine",
+    "url": "http://<VINE_WACHA>:8089/ontoy",
+    "comment": "Comparte VM con frames, asi que su sidecar no puede usar el 8088: se publica en ONTOY_PORT=8089. Fusiona los checks del backend (db, zkteco_sync, checkins_today)"
+  },
+  {
     "slug": "mapalab-assets",
     "label": "MapaLab assets",
     "url": "http://gateway-hub-nginx-1/mapalab/assets/ontoy-probe.js",
@@ -60,6 +73,18 @@
     "label": "Acervo files",
     "url": "http://gateway-hub-nginx-1/acervo/ontoy-probe",
     "kind": "ratelimit",
-    "comment": "Misma sonda sobre la ruta que se inundo el 2026-08-31. Con las zonas separadas del gateway, un 429 aqui ya no implica que el visor este caido: son fusibles distintos"
+    "comment": "Misma sonda sobre la ruta que se inundo el 2026-08-31. Con las zonas separadas de gateway 1.47.0, un 429 aqui ya no implica que el visor este caido: son fusibles distintos"
+  },
+  {
+    "slug": "minerva",
+    "label": "Minerva (SSO)",
+    "url": "http://<FORJA>/ontoy/minerva",
+    "comment": "JWKS por el gateway de la maquina del GitLab; solo abierto al segmento interno"
+  },
+  {
+    "slug": "sieej-documentation",
+    "label": "Documentación SIEEJ",
+    "url": "http://<DOCIIEJ>:80/ontoy",
+    "comment": "VM 106 en Proxmox. Degradado si el sincronizador lleva más de 26 h sin correr o si mariachi no responde su /salud de sieej-documentacion"
   }
 ]

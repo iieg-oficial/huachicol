@@ -159,6 +159,8 @@ def evaluate(
         "detail": result.detail,
         "checks": result.checks,
         "containers": result.containers,
+        "node": result.node,
+        "host": result.host,
         "latency_ms": result.latency_ms,
         "consecutive_failures": failures,
         "consecutive_successes": successes,

@@ -1,3 +1,4 @@
+import hmac
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -10,9 +11,18 @@ from app.notifiers import Notifier
 from app.store import Store
 
 SERVICE_VERSION = "1.0.0"
+DEPLOY_TOKEN_HEADER = "X-Deploy-Token"
 
 
-def _state_to_public(state: dict[str, Any], store: Store) -> dict[str, Any]:
+def token_valido(esperado: str, recibido: str | None) -> bool:
+    if not esperado or not recibido:
+        return False
+    return hmac.compare_digest(esperado.encode(), recibido.encode())
+
+
+def _state_to_public(
+    state: dict[str, Any], store: Store, resolucion_seg: int = 60
+) -> dict[str, Any]:
     return {
         "slug": state["slug"],
         "label": state["label"],
@@ -36,9 +46,77 @@ def _state_to_public(state: dict[str, Any], store: Store) -> dict[str, Any]:
                 1 for c in state["containers"] if c.get("health") == "unhealthy"
             ),
         },
+        "node": state.get("node"),
+        "host": state.get("host") or {},
         "uptime_24h": store.uptime_percent(state["slug"], hours=24),
+        "uptime_tramos": store.uptime_tramos(
+            state["slug"], hours=24, resolucion_seg=resolucion_seg
+        ),
         "alerted": state["alerted"],
     }
+
+
+def _agrupar_por_nodo(servicios: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    nodos: dict[str, dict[str, Any]] = {}
+    for servicio in servicios:
+        clave = servicio.get("node") or "sin-nodo"
+        nodo = nodos.setdefault(clave, {
+            "node": clave,
+            "servicios": [],
+            "host": {},
+            "peers": {},
+            "containers": {"total": 0, "running": 0},
+            "contenedores": [],
+            "puertos": [],
+        })
+        nodo["servicios"].append({
+            "slug": servicio["slug"],
+            "label": servicio["label"],
+            "status": servicio["status"],
+            "version": servicio["version"],
+            "detail": servicio.get("detail"),
+            "since_human": servicio.get("since_human"),
+            "uptime_24h": servicio["uptime_24h"],
+            "uptime_tramos": servicio.get("uptime_tramos"),
+            "container_summary": servicio.get("container_summary"),
+        })
+
+        checks = servicio.get("checks") or {}
+        if servicio.get("host"):
+            nodo["host"] = dict(servicio["host"])
+            disco = checks.get("disk")
+            if isinstance(disco, dict):
+                nodo["host"]["disk_used_percent"] = disco.get("used_percent")
+                nodo["host"]["disk_free_gb"] = disco.get("free_gb")
+
+        resumen = servicio.get("container_summary") or {}
+        nodo["containers"]["total"] += resumen.get("total", 0)
+        nodo["containers"]["running"] += resumen.get("running", 0)
+        nodo["contenedores"].extend(servicio.get("containers") or [])
+
+        for nombre, check in checks.items():
+            if nombre.startswith("peer_"):
+                nodo["peers"][nombre[5:]] = check
+            elif isinstance(check, dict) and check.get("port") is not None:
+                nodo["puertos"].append({
+                    "nombre": nombre,
+                    "puerto": check["port"],
+                    "status": check.get("status"),
+                    "servicio": servicio["slug"],
+                })
+
+    for nodo in nodos.values():
+        estados = [s["status"] for s in nodo["servicios"]]
+        nodo["status"] = (
+            "down" if any(e in ("down", "unreachable") for e in estados)
+            else "degraded" if "degraded" in estados
+            else "ok"
+        )
+        nodo["servicios"].sort(key=lambda s: s["slug"])
+        nodo["contenedores"].sort(key=lambda c: c.get("name") or "")
+        nodo["puertos"].sort(key=lambda p: p["puerto"])
+
+    return sorted(nodos.values(), key=lambda n: n["node"])
 
 
 class MonitorApi:
@@ -71,7 +149,10 @@ class MonitorApi:
 
                 if path == "/api/status":
                     states = store.all_states()
-                    payload = [_state_to_public(s, store) for s in states]
+                    payload = [
+                        _state_to_public(s, store, config.poll_interval)
+                        for s in states
+                    ]
                     self._json(200, {
                         "environment": config.environment,
                         "poll_interval": config.poll_interval,
@@ -99,9 +180,33 @@ class MonitorApi:
                         json.loads(state["containers"]) if state["containers"] else []
                     )
                     limit = int((query.get("limit") or ["100"])[0])
-                    payload = _state_to_public(state, store)
+                    payload = _state_to_public(state, store, config.poll_interval)
                     payload["history"] = store.history(slug, limit=min(limit, 500))
                     self._json(200, payload)
+                    return
+
+                if path == "/api/nodos":
+                    states = store.all_states()
+                    servicios = [
+                        _state_to_public(s, store, config.poll_interval) for s in states
+                    ]
+                    nodos = _agrupar_por_nodo(servicios)
+                    limite = int((query.get("eventos") or ["20"])[0])
+                    self._json(200, {
+                        "environment": config.environment,
+                        "nodos": nodos,
+                        "eventos": store.recent_events(min(limite, 100)),
+                    })
+                    return
+
+                if path.startswith("/api/nodos/") and path.endswith("/historial"):
+                    nodo = path.split("/")[3]
+                    horas = int((query.get("horas") or ["24"])[0])
+                    self._json(200, {
+                        "nodo": nodo,
+                        "horas": min(horas, 168),
+                        "muestras": store.historial_host(nodo, horas=min(horas, 168)),
+                    })
                     return
 
                 if path == "/api/events":
@@ -113,6 +218,14 @@ class MonitorApi:
 
             def do_POST(self) -> None:
                 path = urlparse(self.path).path.rstrip("/")
+
+                if path not in ("/api/deploy/start", "/api/deploy/end"):
+                    self._json(404, {"error": "not found"})
+                    return
+
+                if not token_valido(config.deploy_token, self.headers.get(DEPLOY_TOKEN_HEADER)):
+                    self._json(401, {"error": "token de despliegue invalido"})
+                    return
 
                 if path == "/api/deploy/start":
                     until = store.start_deploy(config.deploy_timeout)

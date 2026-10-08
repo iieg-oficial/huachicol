@@ -26,6 +26,7 @@ class Config:
     failure_threshold: int = 3
     recovery_threshold: int = 1
     history_retention_days: int = 30
+    host_sample_interval: int = 300
     db_path: Path = Path("/data/monitor.db")
     api_port: int = 8090
     discord_webhook_url: str = ""
@@ -36,6 +37,7 @@ class Config:
     environment: str = "production"
     deadman_url: str = ""
     deploy_timeout: int = 900
+    deploy_token: str = ""
     extra: dict = field(default_factory=dict)
 
 
@@ -108,6 +110,7 @@ def load_config() -> Config:
         failure_threshold=_as_int("MONITOR_FAILURE_THRESHOLD", 3),
         recovery_threshold=_as_int("MONITOR_RECOVERY_THRESHOLD", 1),
         history_retention_days=_as_int("MONITOR_HISTORY_RETENTION_DAYS", 30),
+        host_sample_interval=_as_int("MONITOR_HOST_SAMPLE_INTERVAL", 300),
         db_path=Path(os.environ.get("MONITOR_DB_PATH", "/data/monitor.db")),
         api_port=_as_int("MONITOR_API_PORT", 8090),
         discord_webhook_url=_as_secret("DISCORD_WEBHOOK_URL"),
@@ -118,4 +121,5 @@ def load_config() -> Config:
         environment=os.environ.get("MONITOR_ENVIRONMENT", "production").strip(),
         deadman_url=_as_secret("MONITOR_DEADMAN_URL"),
         deploy_timeout=_as_int("MONITOR_DEPLOY_TIMEOUT", 900),
+        deploy_token=_as_secret("MONITOR_DEPLOY_TOKEN"),
     )

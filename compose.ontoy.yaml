@@ -8,7 +8,7 @@ x-logging: &logging
 
 services:
   docker-socket-proxy:
-    image: nginx:1.30.4-alpine
+    image: nginx:1.30.6-alpine
     restart: unless-stopped
     user: "101:101"
     group_add:

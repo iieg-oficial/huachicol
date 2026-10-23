@@ -5,6 +5,8 @@ RUN addgroup -S -g 10001 monitor \
     && mkdir -p /data \
     && chown monitor:monitor /data
 
+RUN python -m pip uninstall -y -q pip
+
 WORKDIR /app
 
 COPY monitor.py /app/monitor.py

@@ -17,6 +17,7 @@ class Target:
     timeout: float = DEFAULT_TIMEOUT
     critical: bool = True
     kind: str = KIND_ONTOY
+    node: str | None = None
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ def load_targets(path: Path) -> list[Target]:
             timeout=float(item.get("timeout") or DEFAULT_TIMEOUT),
             critical=bool(item.get("critical", True)),
             kind=kind,
+            node=str(item.get("node") or "").strip() or None,
         ))
     if not targets:
         raise ValueError("targets.json no contiene ningun target valido")

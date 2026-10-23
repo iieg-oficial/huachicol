@@ -137,8 +137,16 @@ def _probe_ratelimit(target: Target) -> ProbeResult:
 
 def probe(target: Target) -> ProbeResult:
     if target.kind == KIND_RATELIMIT:
-        return _probe_ratelimit(target)
+        result = _probe_ratelimit(target)
+    else:
+        result = _probe_ontoy(target)
+    # El nodo del target es respaldo: un /ontoy sin sidecar no lo reporta, y uno caido tampoco.
+    if not result.node:
+        result.node = target.node
+    return result
 
+
+def _probe_ontoy(target: Target) -> ProbeResult:
     started = time.monotonic()
     request = urllib.request.Request(
         target.url,

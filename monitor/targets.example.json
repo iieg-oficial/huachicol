@@ -47,7 +47,9 @@
   {
     "slug": "sieej",
     "label": "SIEEJ",
-    "url": "http://gateway-hub-nginx-1/sieej/ontoy"
+    "url": "http://gateway-hub-nginx-1/sieej/ontoy",
+    "node": "S1",
+    "comment": "ontoy.json estatico que sirve el nginx del gateway: no sabe en que nodo vive, asi que el node va aqui. El node del target solo se usa si el /ontoy no trae el suyo"
   },
   {
     "slug": "frames",
@@ -79,7 +81,8 @@
     "slug": "minerva",
     "label": "Minerva (SSO)",
     "url": "http://<FORJA>/ontoy/minerva",
-    "comment": "JWKS por el gateway de la maquina del GitLab; solo abierto al segmento interno"
+    "node": "forja",
+    "comment": "Vive en la maquina del GitLab, fuera de S1-S5, y no implementa /ontoy: el node va en el target. JWKS por el gateway de la maquina del GitLab; solo abierto al segmento interno"
   },
   {
     "slug": "sieej-documentation",

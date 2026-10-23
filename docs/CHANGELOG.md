@@ -8,6 +8,21 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [2.19.0] - 2026-10-23
+
+### Agregado: `node` por target en `targets.json`
+
+Un target puede declarar `node`, que el monitor usa cuando el `/ontoy` no trae el suyo. Mariachi
+(su `/ontoy` es el de la API, sin sidecar), SIEEJ (un `ontoy.json` estático del gateway) y minerva
+(el JWKS de la forja) no reportan `ONTOY_NODE`, y en la vista Servidores de mariachi caían en
+«sin-nodo». Si el payload trae `node`, gana el del payload.
+
+El respaldo aplica también a un sondeo `unreachable`: sin payload, el servicio caído perdía su nodo
+y salía de su tarjeta justo cuando más importaba verlo ahí.
+
+Al desplegar, agregar `"node"` a esos targets en el `targets.json` de cada entorno (no se versiona)
+y recrear el monitor: `S1` para mariachi y sieej, `forja` para minerva.
+
 ## [2.18.2] - 2026-09-29
 
 ### Corregido

@@ -1,4 +1,4 @@
-FROM python:3.13-alpine
+FROM python:3.15-alpine
 
 RUN addgroup -S -g 10001 monitor \
     && adduser -S -D -H -u 10001 -G monitor monitor \

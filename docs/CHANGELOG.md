@@ -8,6 +8,12 @@ Desde **2.0.0** este repo es el monitor ligero `/ontoy`. Antes fue el stack de
 observabilidad (Grafana, Prometheus, Loki, Alertmanager, cAdvisor, exporters, Alloy),
 retirado en 2.0.0; su historico esta en [changelog/v1.md](./changelog/v1.md).
 
+## [No publicado]
+
+### Cambiado
+
+- Imágenes base a Python 3.15 y Node 26.
+
 ## [2.19.0] - 2026-10-23
 
 ### Agregado: `node` por target en `targets.json`

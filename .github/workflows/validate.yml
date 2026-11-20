@@ -2,9 +2,9 @@ name: Validate Configuration
 
 on:
   push:
-    branches: [production, develop]
+    branches: [production, staging, develop]
   pull_request:
-    branches: [production, develop]
+    branches: [production, staging, develop]
 
 jobs:
   validate-compose:
